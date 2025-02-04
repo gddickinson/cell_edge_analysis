@@ -1,0 +1,6 @@
+PyQt6>=6.4
+numpy>=1.21
+tifffile>=2023.3.15
+opencv-python>=4.7
+scikit-image>=0.19
+matplotlib>=3.5

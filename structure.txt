@@ -1,0 +1,18 @@
+# piezo1_analysis/
+# ├── main.py
+# ├── requirements.txt
+# ├── src/
+# │   ├── __init__.py
+# │   ├── gui/
+# │   │   ├── __init__.py
+# │   │   ├── main_window.py
+# │   │   ├── image_view.py
+# │   │   └── toolbar.py
+# │   ├── image_processing/
+# │   │   ├── __init__.py
+# │   │   ├── tiff_handler.py
+# │   │   └── overlay.py
+# │   └── analysis/
+# │       ├── __init__.py
+# │       ├── edge_detection.py
+# │       └── curvature.py
