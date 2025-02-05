@@ -10,7 +10,8 @@ class ImageOverlay:
         self.cell_color = (255, 0, 0)  # Red for cell boundary
         self.piezo_color = (0, 255, 0)  # Green for PIEZO1
 
-    def create_overlay(self, cell_image, piezo_image, edge_image=None):
+    def create_overlay(self, cell_image, piezo_image, edge_image=None, show_vectors=False,
+                      measurement_points=None, normal_vectors=None, sampling_depth=None):
         """
         Create an overlay of cell boundary, PIEZO1 images, and detected edges.
 
@@ -18,6 +19,10 @@ class ImageOverlay:
             cell_image (np.ndarray): Binary cell image
             piezo_image (np.ndarray): PIEZO1 fluorescence image
             edge_image (np.ndarray, optional): Detected edge image
+            show_vectors (bool): Whether to show sampling vectors
+            measurement_points (np.ndarray): Points along edge where intensity is measured
+            normal_vectors (np.ndarray): Normal vectors at measurement points
+            sampling_depth (int): Depth of sampling into cell
 
         Returns:
             QPixmap: Overlay image for display
@@ -30,13 +35,11 @@ class ImageOverlay:
 
         # Process PIEZO1 signal (green channel)
         piezo_normalized = self._normalize_image(piezo_image)
-        # Enhance contrast for better visibility of puncta
         piezo_enhanced = cv2.equalizeHist(piezo_normalized)
         overlay[:, :, 1] = piezo_enhanced
 
         # Process cell boundary (red channel)
         cell_normalized = self._normalize_image(cell_image)
-        # Create semi-transparent cell overlay
         cell_overlay = np.zeros_like(overlay)
         cell_overlay[cell_normalized > 0] = self.cell_color
 
@@ -46,10 +49,37 @@ class ImageOverlay:
             edge_overlay[edge_image > 0] = (0, 0, 255)  # Blue color for edges
             overlay = cv2.addWeighted(edge_overlay, 1.0, overlay, 1.0, 0)
 
+        # Add sampling vectors if requested
+        if show_vectors and measurement_points is not None and normal_vectors is not None and sampling_depth is not None:
+            # Draw sampling rectangles
+            for point, normal in zip(measurement_points, normal_vectors):
+                try:
+                    # Start point
+                    start = point.astype(np.int32)
+                    # End point
+                    end = (point + normal * sampling_depth).astype(np.int32)
+
+                    # Draw rectangle to represent sampling area
+                    # Calculate corner points of rectangle
+                    width = 2  # Width of sampling rectangle
+                    perp_vector = np.array([-normal[1], normal[0]]) * width
+                    corners = np.array([
+                        start + perp_vector,
+                        start - perp_vector,
+                        end - perp_vector,
+                        end + perp_vector
+                    ], dtype=np.int32)
+
+                    # Draw filled rectangle
+                    cv2.fillPoly(overlay, [corners], (255, 255, 0))  # Yellow color
+                except Exception as e:
+                    print(f"Error drawing vector: {e}")
+                    continue
+
         # Blend cell overlay using opacity
         overlay = cv2.addWeighted(cell_overlay, self.opacity, overlay, 1.0, 0)
 
-        # Convert to QPixmap
+        # Convert to QPixmap and return
         return self._array_to_qpixmap(overlay)
 
     def _normalize_image(self, image):

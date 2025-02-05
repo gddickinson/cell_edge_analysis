@@ -9,6 +9,9 @@ from ..image_processing.tiff_handler import TiffHandler
 from ..image_processing.overlay import ImageOverlay
 from ..analysis.edge_detection import EdgeDetector
 from ..analysis.curvature import CurvatureAnalyzer
+from ..analysis.intensity_analyzer import IntensityAnalyzer
+from .analysis_dialog import IntensityAnalysisDialog
+from .results_window import ResultsWindow
 
 class AnalysisSettingsDialog(QDialog):
     def __init__(self, parent=None):
@@ -52,11 +55,13 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("PIEZO1 Analysis Tool")
 
-        # Initialize handlers
+        # Initialize handlers and windows
         self.tiff_handler = TiffHandler()
         self.overlay_handler = ImageOverlay()
         self.edge_detector = EdgeDetector()
         self.curvature_analyzer = CurvatureAnalyzer()
+        self.intensity_analyzer = IntensityAnalyzer()
+        self.results_window = None
 
         self.setup_ui()
 
@@ -113,11 +118,11 @@ class MainWindow(QMainWindow):
         # Analysis menu
         analysis_menu = menubar.addMenu("Analysis")
 
-        settings_action = analysis_menu.addAction("Analysis Settings")
-        settings_action.triggered.connect(self.show_analysis_settings)
-
         detect_edges_action = analysis_menu.addAction("Detect Cell Edges")
         detect_edges_action.triggered.connect(self.detect_edges)
+
+        intensity_action = analysis_menu.addAction("Analyze Edge Intensity")
+        intensity_action.triggered.connect(self.analyze_edge_intensity)
 
         calculate_curvature_action = analysis_menu.addAction("Calculate Curvature")
         calculate_curvature_action.triggered.connect(self.calculate_curvature)
@@ -150,6 +155,7 @@ class MainWindow(QMainWindow):
                 self.update_display()
 
     def update_frame(self, frame_number):
+        """Update frame and all associated displays."""
         if self.tiff_handler.set_frame(frame_number - 1):  # Convert to 0-based index
             self.update_display()
 
@@ -161,12 +167,51 @@ class MainWindow(QMainWindow):
         self.image_viewer.set_zoom(value)
 
     def update_display(self):
+        """Update both main display and results if available."""
+        # Update main display
         cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
         if cell_frame is not None and piezo_frame is not None:
-            # Get edge image for current frame
             edge_image = self.edge_detector.get_edge_image(self.tiff_handler.current_frame)
-            pixmap = self.overlay_handler.create_overlay(cell_frame, piezo_frame, edge_image)
+
+            # Get sampling vectors if results window is showing them
+            show_vectors = (self.results_window is not None and
+                          self.results_window.isVisible() and
+                          self.results_window.show_vectors)
+
+            if show_vectors:
+                # Get measurement points and normals
+                _, points, normals = self.intensity_analyzer.get_frame_data(
+                    self.tiff_handler.current_frame
+                )
+                sampling_depth = self.intensity_analyzer.sampling_depth
+            else:
+                points = None
+                normals = None
+                sampling_depth = None
+
+            # Create overlay with optional vectors
+            pixmap = self.overlay_handler.create_overlay(
+                cell_frame,
+                piezo_frame,
+                edge_image,
+                show_vectors,
+                points,
+                normals,
+                sampling_depth
+            )
             self.image_viewer.update_display(pixmap)
+
+        # Update results if window exists and is visible
+        if self.results_window is not None and self.results_window.isVisible():
+            intensities, points, _ = self.intensity_analyzer.get_frame_data(
+                self.tiff_handler.current_frame
+            )
+            if intensities is not None and points is not None:
+                self.results_window.update_results(
+                    intensities,
+                    points,
+                    self.tiff_handler.current_frame
+                )
 
     def update_status_bar(self, x, y):
         cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
@@ -180,13 +225,6 @@ class MainWindow(QMainWindow):
             except IndexError:
                 pass
 
-    def show_analysis_settings(self):
-        dialog = AnalysisSettingsDialog(self)
-        if dialog.exec():
-            # Store settings for later use
-            self.edge_width = dialog.edge_width_spin.value()
-            self.curv_window = dialog.curv_window_spin.value()
-
     def detect_edges(self):
         if self.tiff_handler.cell_stack is not None:
             self.status_bar.showMessage("Detecting cell edges in all frames...")
@@ -198,6 +236,55 @@ class MainWindow(QMainWindow):
                 self.status_bar.showMessage("Error during edge detection")
             # Update display for current frame
             self.update_display()
+
+    def analyze_edge_intensity(self):
+        """Run edge intensity analysis."""
+        if self.edge_detector.contours:
+            # Show settings dialog
+            dialog = IntensityAnalysisDialog(self)
+            if dialog.exec():
+                settings = dialog.get_settings()
+
+                # Set parameters
+                self.intensity_analyzer.set_parameters(
+                    settings['sampling_depth'],
+                    settings['sampling_interval']
+                )
+
+                # Get current frame data
+                cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
+                contour = self.edge_detector.contours.get(self.tiff_handler.current_frame)
+
+                if piezo_frame is not None and contour is not None:
+                    # Run analysis
+                    self.status_bar.showMessage("Analyzing edge intensity...")
+                    success = self.intensity_analyzer.analyze_frame(
+                        piezo_frame,
+                        contour,
+                        self.tiff_handler.current_frame
+                    )
+
+                    if success:
+                        # Initialize and show results window
+                        if self.results_window is None:
+                            self.results_window = ResultsWindow(self)
+
+                        # Get and display results
+                        intensities, points, _ = self.intensity_analyzer.get_frame_data(
+                            self.tiff_handler.current_frame
+                        )
+                        self.results_window.update_results(
+                            intensities,
+                            points,
+                            self.tiff_handler.current_frame
+                        )
+                        self.results_window.show()
+
+                        self.status_bar.showMessage("Edge intensity analysis complete")
+                    else:
+                        self.status_bar.showMessage("Error in intensity analysis")
+        else:
+            self.status_bar.showMessage("Please detect cell edges first")
 
     def calculate_curvature(self):
         if self.edge_detector.contours is not None:
