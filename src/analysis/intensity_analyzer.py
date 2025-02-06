@@ -2,6 +2,7 @@
 import numpy as np
 from scipy.interpolate import splprep, splev
 import cv2
+from scipy.ndimage import binary_fill_holes
 
 class IntensityAnalyzer:
     def __init__(self):
@@ -10,26 +11,58 @@ class IntensityAnalyzer:
         self.intensities = {}  # Dictionary to store intensities for each frame
         self.measurement_points = {}  # Dictionary to store measurement positions
         self.normal_vectors = {}  # Dictionary to store normal vectors
+        self.border_margin = 20  # Pixels to exclude from edges
 
     def set_parameters(self, sampling_depth, interval):
         """Set analysis parameters."""
         self.sampling_depth = sampling_depth
         self.interval = interval
 
-    def calculate_normal_vector(self, point1, point2):
+    def calculate_normal_vector(self, point1, point2, binary_mask):
         """
-        Calculate normal vector between two points, pointing into the cell.
-        The vector will point to the right when moving along the contour.
+        Calculate normal vector between two points, ensuring it points into the cell.
+
+        Args:
+            point1, point2: Points along the contour
+            binary_mask: Binary image of cell
         """
         dx = point2[0] - point1[0]
         dy = point2[1] - point1[1]
-        # Get perpendicular vector (normal) pointing into the cell
-        normal = np.array([dy, -dx])  # Changed sign to point inward
-        # Normalize to unit vector
-        length = np.sqrt(normal[0]**2 + normal[1]**2)
-        if length > 0:
-            normal = normal / length
-        return normal
+
+        # Get both possible normal vectors
+        normal1 = np.array([dy, -dx])
+        normal2 = np.array([-dy, dx])
+
+        # Normalize both vectors
+        length1 = np.sqrt(normal1[0]**2 + normal1[1]**2)
+        length2 = np.sqrt(normal2[0]**2 + normal2[1]**2)
+
+        if length1 > 0 and length2 > 0:
+            normal1 = normal1 / length1
+            normal2 = normal2 / length2
+
+            # Check which direction points into the cell
+            test_dist = 5  # Test distance
+            point = point1.astype(int)
+
+            # Test points in both directions
+            test_point1 = point + (normal1 * test_dist).astype(int)
+            test_point2 = point + (normal2 * test_dist).astype(int)
+
+            # Ensure test points are within image bounds
+            shape = binary_mask.shape
+            in_bounds1 = (0 <= test_point1[0] < shape[1] and
+                         0 <= test_point1[1] < shape[0])
+            in_bounds2 = (0 <= test_point2[0] < shape[1] and
+                         0 <= test_point2[1] < shape[0])
+
+            # Check which direction is inside the cell
+            val1 = binary_mask[test_point1[1], test_point1[0]] if in_bounds1 else 0
+            val2 = binary_mask[test_point2[1], test_point2[0]] if in_bounds2 else 0
+
+            return normal1 if val1 > val2 else normal2
+
+        return np.array([0, 0])
 
     def sample_intensity(self, image, point, normal, depth):
         """Sample intensity along normal vector."""
@@ -50,16 +83,22 @@ class IntensityAnalyzer:
 
         return np.mean(intensities)  # Return mean intensity
 
-    def analyze_frame(self, piezo_image, contour, frame_index):
-        """
-        Analyze intensity along cell edge for a single frame.
+    def is_near_border(self, point, shape):
+        """Check if a point is near the image border."""
+        x, y = point
+        return (x < self.border_margin or
+                x > shape[1] - self.border_margin or
+                y < self.border_margin or
+                y > shape[0] - self.border_margin)
 
-        Args:
-            piezo_image (np.ndarray): PIEZO1 fluorescence image
-            contour (np.ndarray): Cell edge contour
-            frame_index (int): Frame index
-        """
+    def analyze_frame(self, piezo_image, contour, frame_index):
+        """Analyze intensity along cell edge for a single frame."""
         try:
+            # Create binary mask of cell interior with correct data type
+            binary_mask = np.zeros_like(piezo_image, dtype=np.uint8)
+            cv2.drawContours(binary_mask, [contour.astype(np.int32)], -1, 1, thickness=-1)
+            binary_mask = binary_fill_holes(binary_mask).astype(np.uint8)  # Convert to uint8
+
             # Resample contour at regular intervals
             contour = contour.squeeze()
             tck, u = splprep([contour[:, 0], contour[:, 1]], s=0, per=1)
@@ -68,29 +107,41 @@ class IntensityAnalyzer:
 
             intensities = []
             normals = []
+            filtered_points = []
 
             # Calculate intensities along the contour
             for i in range(len(points)):
-                # Get current and next point
                 current = points[i]
                 next_point = points[(i + 1) % len(points)]
 
-                # Calculate normal vector
-                normal = self.calculate_normal_vector(current, next_point)
-                normals.append(normal)
+                # Skip points near the border
+                if not self.is_near_border(current, piezo_image.shape):
+                    # Calculate normal vector pointing into cell
+                    normal = self.calculate_normal_vector(
+                        current, next_point, binary_mask
+                    )
 
-                # Sample intensity
-                intensity = self.sample_intensity(
-                    piezo_image, current, normal, self.sampling_depth
-                )
-                intensities.append(intensity)
+                    # Check if sampling region stays within borders
+                    end_point = current + normal * self.sampling_depth
+                    if not self.is_near_border(end_point, piezo_image.shape):
+                        # Sample intensity
+                        intensity = self.sample_intensity(
+                            piezo_image, current, normal, self.sampling_depth
+                        )
 
-            # Store results
-            self.intensities[frame_index] = np.array(intensities)
-            self.measurement_points[frame_index] = points
-            self.normal_vectors[frame_index] = np.array(normals)
+                        intensities.append(intensity)
+                        normals.append(normal)
+                        filtered_points.append(current)
 
-            return True
+            # Convert lists to arrays
+            if filtered_points:  # Only store results if we have valid points
+                self.intensities[frame_index] = np.array(intensities)
+                self.measurement_points[frame_index] = np.array(filtered_points)
+                self.normal_vectors[frame_index] = np.array(normals)
+                return True
+            else:
+                print(f"No valid measurement points found in frame {frame_index}")
+                return False
 
         except Exception as e:
             print(f"Error analyzing frame {frame_index}: {e}")

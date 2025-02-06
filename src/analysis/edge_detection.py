@@ -12,89 +12,53 @@ class EdgeDetector:
     def detect_edges(self, binary_image, frame_index=0):
         """
         Detect edges in binary cell segmentation image.
-
-        Args:
-            binary_image (np.ndarray): Binary segmentation image
-            frame_index (int): Current frame index
-
-        Returns:
-            tuple: (edge_image, contour)
         """
         try:
-            # Print debug information
-            print(f"Frame {frame_index} input shape: {binary_image.shape}")
-            print(f"Frame {frame_index} input dtype: {binary_image.dtype}")
-
-            # Ensure binary image and make contiguous in memory
-            binary = np.ascontiguousarray(binary_image > 0, dtype=np.uint8)
+            # Ensure binary image
+            binary = (binary_image > 0).astype(np.uint8)
 
             # Clean up binary image
             cleaned = morphology.remove_small_objects(binary > 0, min_size=100)
-            cleaned = np.ascontiguousarray(cleaned, dtype=np.uint8)
+            cleaned = cleaned.astype(np.uint8)
 
-            # Correct orientation: rotate 90 degrees clockwise, flip left-right and up-down
-            #cleaned = np.ascontiguousarray(np.flipud(np.fliplr(np.rot90(cleaned, k=-1))))
-
-            # Create edge image with same shape as cleaned image
-            edge_image = np.zeros(cleaned.shape, dtype=np.uint8)
-            edge_image = np.ascontiguousarray(edge_image)
-
-            print(f"Frame {frame_index} cleaned shape: {cleaned.shape}")
-            print(f"Frame {frame_index} edge image shape: {edge_image.shape}")
-
-            # Find contours using OpenCV
-            contours, _ = cv2.findContours(cleaned.copy(),
-                                         cv2.RETR_EXTERNAL,
-                                         cv2.CHAIN_APPROX_SIMPLE)
+            # Find contours using OpenCV for better compatibility
+            contours, hierarchy = cv2.findContours(
+                cleaned,
+                cv2.RETR_EXTERNAL,  # Only get external contours
+                cv2.CHAIN_APPROX_NONE  # Get all contour points
+            )
 
             if contours:
-                # Get the longest contour
-                contour = max(contours, key=cv2.contourArea)
+                # Get the largest contour by area
+                largest_contour = max(contours, key=cv2.contourArea)
 
-                # Create a fresh image for contour drawing
-                temp_image = np.zeros_like(cleaned, dtype=np.uint8)
+                # Create edge image
+                edge_image = np.zeros_like(binary, dtype=np.uint8)
 
-                # Draw contour on temporary image
-                try:
-                    temp_image = cv2.drawContours(temp_image,
-                                                [contour],
-                                                -1,
-                                                (255),
-                                                2)
-                except Exception as draw_error:
-                    print(f"Error drawing contour in frame {frame_index}: {draw_error}")
-                    print(f"Contour shape: {contour.shape}")
-                    return edge_image, None
+                # Draw contour
+                cv2.drawContours(edge_image, [largest_contour], -1, 255, 2)
 
-                # Store the results for this frame
-                self.edges[frame_index] = temp_image
-                self.contours[frame_index] = contour
-                self.edge_images[frame_index] = temp_image
+                # Convert contour to the format used by skimage for consistency
+                contour_points = largest_contour.squeeze()
 
-                return temp_image, contour
+                # Store results
+                self.edges[frame_index] = edge_image
+                self.contours[frame_index] = contour_points
+                self.edge_images[frame_index] = edge_image
 
-            return edge_image, None
+                return edge_image, contour_points
+
+            return np.zeros_like(binary_image, dtype=np.uint8), None
 
         except Exception as e:
             print(f"Error in detect_edges for frame {frame_index}: {e}")
-            print(f"Stack trace:", np.format_exception())
             return np.zeros_like(binary_image, dtype=np.uint8), None
 
     def detect_edges_stack(self, binary_stack):
         """
         Detect edges in entire binary image stack.
-
-        Args:
-            binary_stack (np.ndarray): Stack of binary images
-
-        Returns:
-            bool: Success status
         """
         try:
-            # Print stack information
-            print(f"Stack shape: {binary_stack.shape}")
-            print(f"Stack dtype: {binary_stack.dtype}")
-
             # Clear previous results
             self.edges.clear()
             self.contours.clear()
@@ -111,19 +75,8 @@ class EdgeDetector:
             return False
 
     def get_edge_image(self, frame_index):
-        """
-        Get edge image for specific frame.
-
-        Args:
-            frame_index (int): Frame index
-
-        Returns:
-            np.ndarray: Edge image for frame
-        """
-        edge_image = self.edge_images.get(frame_index)
-        if edge_image is None:
-            return None
-        return np.ascontiguousarray(edge_image.copy())  # Return a contiguous copy
+        """Get edge image for specific frame."""
+        return self.edge_images.get(frame_index)
 
     def get_edge_mask(self, shape, distance_px):
         """
