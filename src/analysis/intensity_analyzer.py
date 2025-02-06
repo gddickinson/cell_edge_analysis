@@ -6,17 +6,31 @@ from scipy.ndimage import binary_fill_holes
 
 class IntensityAnalyzer:
     def __init__(self):
-        self.sampling_depth = 10  # Default sampling depth in pixels
-        self.interval = 5  # Default interval between measurements
-        self.intensities = {}  # Dictionary to store intensities for each frame
+        self.sampling_depth = 20  # Default sampling depth in pixels
+        self.vector_width = 5    # Default vector width in pixels
+        self.interval = 5        # Default interval between measurements
+        self.measure_type = 'mean'  # Default intensity measure type
+        self.intensities = {}    # Dictionary to store intensities for each frame
         self.measurement_points = {}  # Dictionary to store measurement positions
         self.normal_vectors = {}  # Dictionary to store normal vectors
         self.border_margin = 20  # Pixels to exclude from edges
 
-    def set_parameters(self, sampling_depth, interval):
-        """Set analysis parameters."""
+    def set_parameters(self, sampling_depth, vector_width, interval, measure_type):
+        """
+        Set analysis parameters.
+
+        Args:
+            sampling_depth (int): Distance to sample into cell
+            vector_width (int): Width of sampling rectangle
+            interval (int): Distance between measurement points
+            measure_type (str): Type of intensity measurement ('mean', 'minimum', 'maximum')
+        """
         self.sampling_depth = sampling_depth
+        self.vector_width = vector_width
         self.interval = interval
+        self.measure_type = measure_type
+        print(f"Parameters set: depth={sampling_depth}, width={vector_width}, "
+              f"interval={interval}, measure={measure_type}")  # Debug print
 
     def calculate_normal_vector(self, point1, point2, binary_mask):
         """

@@ -11,7 +11,8 @@ class ImageOverlay:
         self.piezo_color = (0, 255, 0)  # Green for PIEZO1
 
     def create_overlay(self, cell_image, piezo_image, edge_image=None, show_vectors=False,
-                      measurement_points=None, normal_vectors=None, sampling_depth=None):
+                      measurement_points=None, normal_vectors=None, sampling_depth=None,
+                      vector_width=None):
         """
         Create an overlay of cell boundary, PIEZO1 images, and detected edges.
 
@@ -23,9 +24,7 @@ class ImageOverlay:
             measurement_points (np.ndarray): Points along edge where intensity is measured
             normal_vectors (np.ndarray): Normal vectors at measurement points
             sampling_depth (int): Depth of sampling into cell
-
-        Returns:
-            QPixmap: Overlay image for display
+            vector_width (int): Width of sampling vectors
         """
         if cell_image is None or piezo_image is None:
             return None
@@ -50,28 +49,41 @@ class ImageOverlay:
             overlay = cv2.addWeighted(edge_overlay, 1.0, overlay, 1.0, 0)
 
         # Add sampling vectors if requested
-        if show_vectors and measurement_points is not None and normal_vectors is not None and sampling_depth is not None:
-            # Draw sampling rectangles
+        if (show_vectors and measurement_points is not None and
+            normal_vectors is not None and sampling_depth is not None and
+            vector_width is not None):
+
+            # Create binary mask for collision detection
+            vector_mask = np.zeros_like(cell_image, dtype=bool)
+
             for point, normal in zip(measurement_points, normal_vectors):
                 try:
                     # Start point
                     start = point.astype(np.int32)
-                    # End point
-                    end = (point + normal * sampling_depth).astype(np.int32)
 
-                    # Draw rectangle to represent sampling area
-                    # Calculate corner points of rectangle
-                    width = 2  # Width of sampling rectangle
-                    perp_vector = np.array([-normal[1], normal[0]]) * width
-                    corners = np.array([
-                        start + perp_vector,
-                        start - perp_vector,
-                        end - perp_vector,
-                        end + perp_vector
-                    ], dtype=np.int32)
+                    # Check if start point is valid
+                    if (0 <= start[0] < cell_image.shape[1] and
+                        0 <= start[1] < cell_image.shape[0]):
 
-                    # Draw filled rectangle
-                    cv2.fillPoly(overlay, [corners], (255, 255, 0))  # Yellow color
+                        # Calculate end point
+                        end = (point + normal * sampling_depth).astype(np.int32)
+
+                        # Calculate perpendicular vector for width
+                        # Using the actual vector_width parameter from user
+                        half_width = vector_width / 2
+                        perp_vector = np.array([-normal[1], normal[0]]) * half_width
+
+                        # Calculate corner points
+                        corners = np.array([
+                            start + perp_vector,
+                            start - perp_vector,
+                            end - perp_vector,
+                            end + perp_vector
+                        ], dtype=np.int32)
+
+                        # Draw filled rectangle
+                        cv2.fillPoly(overlay, [corners], (255, 255, 0))  # Yellow color
+
                 except Exception as e:
                     print(f"Error drawing vector: {e}")
                     continue
@@ -79,7 +91,6 @@ class ImageOverlay:
         # Blend cell overlay using opacity
         overlay = cv2.addWeighted(cell_overlay, self.opacity, overlay, 1.0, 0)
 
-        # Convert to QPixmap and return
         return self._array_to_qpixmap(overlay)
 
     def _normalize_image(self, image):
