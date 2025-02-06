@@ -104,11 +104,3 @@ class ImageOverlay:
     def set_opacity(self, value):
         """Set overlay opacity (0-1)."""
         self.opacity = max(0.0, min(1.0, value))
-
-    def set_cell_color(self, color):
-        """Set cell boundary color (RGB tuple)."""
-        self.cell_color = color
-
-    def set_piezo_color(self, color):
-        """Set PIEZO1 signal color (RGB tuple)."""
-        self.piezo_color = color
