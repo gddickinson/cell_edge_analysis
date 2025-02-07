@@ -15,7 +15,7 @@ class ResultsPlot(QWidget):
     def setup_ui(self):
         layout = QVBoxLayout(self)
 
-        # Create figure with subplots
+        # Create figure
         self.figure = Figure(figsize=(8, 6))
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
@@ -31,9 +31,12 @@ class ResultsPlot(QWidget):
         if intensities is None or positions is None:
             return
 
-        # Clear previous plots
-        self.intensity_ax.clear()
-        self.position_ax.clear()
+        # Clear entire figure
+        self.figure.clear()
+
+        # Recreate subplots
+        self.intensity_ax = self.figure.add_subplot(211)
+        self.position_ax = self.figure.add_subplot(212)
 
         # Plot intensities
         x = np.arange(len(intensities))
@@ -43,12 +46,24 @@ class ResultsPlot(QWidget):
         self.intensity_ax.set_ylabel('Intensity')
         self.intensity_ax.grid(True)
 
-        # Plot measurement positions as scatter points without connecting line
-        self.position_ax.scatter(positions[:, 0], positions[:, 1],
-                               c='r', s=1, label='Measurement Points')
+        # Plot measurement positions with intensity-based coloring
+        scatter = self.position_ax.scatter(positions[:, 0], positions[:, 1],
+                                         c=intensities, cmap='viridis',
+                                         s=100,  # Larger points
+                                         label='Measurement Points')
+
+        # Add colorbar
+        self.figure.colorbar(scatter, ax=self.position_ax, label='Intensity')
+
+        # Flip y-axis to match main display
+        self.position_ax.invert_yaxis()
+
         self.position_ax.set_title('Measurement Positions')
         self.position_ax.set_aspect('equal')
         self.position_ax.grid(True)
+
+        # Adjust layout
+        self.figure.tight_layout()
 
         # Update canvas
         self.canvas.draw()

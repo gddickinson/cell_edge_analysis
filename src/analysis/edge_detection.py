@@ -76,6 +76,8 @@ class EdgeDetector:
         Returns:
             np.ndarray: Edge image with original and optionally smoothed contours
         """
+        print(f"Getting edge image for frame {frame_index}, show_smoothed={show_smoothed}")  # Debug
+
         # Create edge image
         if frame_index in self.contours:
             edge_image = np.zeros_like(self.edges[frame_index], dtype=np.uint8)
@@ -90,10 +92,15 @@ class EdgeDetector:
             if show_smoothed and self.smoothing_window > 0:
                 smoothed = self.smoothed_contours.get(frame_index)
                 if smoothed is not None:
+                    print(f"Drawing smoothed contour for frame {frame_index}")  # Debug
                     smoothed_cv2 = smoothed.reshape((-1, 1, 2)).astype(np.int32)
-                    cv2.drawContours(edge_image, [smoothed_cv2], -1, 128, 2)
-                    print(f"Drew smoothed contour for frame {frame_index}")  # Debug print
+                    # Create separate image for smoothed contour
+                    smoothed_image = np.zeros_like(edge_image)
+                    cv2.drawContours(smoothed_image, [smoothed_cv2], -1, 128, 2)
+                    # Add smoothed contour where there isn't already an original edge
+                    edge_image[smoothed_image == 128] = 128
 
+            print(f"Edge image unique values: {np.unique(edge_image)}")  # Debug
             return edge_image
         return None
 

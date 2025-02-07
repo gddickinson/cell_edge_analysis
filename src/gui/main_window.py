@@ -152,13 +152,13 @@ class MainWindow(QMainWindow):
                            self.results_window.isVisible() and
                            self.results_window.show_smoothed)
 
+            print(f"Update display - show_smoothed: {show_smoothed}")  # Debug
+
             # Get edge image with appropriate contours
             edge_image = self.edge_detector.get_edge_image(
-                self.tiff_handler.current_frame,
+                frame_index=self.tiff_handler.current_frame,
                 show_smoothed=show_smoothed
             )
-
-            print(f"Update display - Show smoothed: {show_smoothed}")  # Debug print
 
             if show_vectors:
                 # Get measurement points and normals
