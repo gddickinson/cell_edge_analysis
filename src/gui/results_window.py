@@ -43,8 +43,9 @@ class ResultsPlot(QWidget):
         self.intensity_ax.set_ylabel('Intensity')
         self.intensity_ax.grid(True)
 
-        # Plot measurement positions
-        self.position_ax.plot(positions[:, 0], positions[:, 1], 'r-', label='Edge')
+        # Plot measurement positions as scatter points without connecting line
+        self.position_ax.scatter(positions[:, 0], positions[:, 1],
+                               c='r', s=1, label='Measurement Points')
         self.position_ax.set_title('Measurement Positions')
         self.position_ax.set_aspect('equal')
         self.position_ax.grid(True)

@@ -1,6 +1,6 @@
 # src/gui/toolbar.py
 from PyQt6.QtWidgets import (QToolBar, QPushButton, QSpinBox, QLabel,
-                           QDoubleSpinBox, QComboBox)
+                           QDoubleSpinBox)
 from PyQt6.QtCore import pyqtSignal
 
 class ToolBar(QToolBar):
@@ -8,6 +8,7 @@ class ToolBar(QToolBar):
     frame_changed = pyqtSignal(int)
     opacity_changed = pyqtSignal(float)
     zoom_changed = pyqtSignal(float)
+    smoothing_changed = pyqtSignal(int)
 
     def __init__(self):
         super().__init__()
@@ -31,25 +32,37 @@ class ToolBar(QToolBar):
 
         self.addSeparator()
 
-        # Overlay controls
+        # Opacity control
         self.addWidget(QLabel("Opacity:"))
-        self.opacity_spinbox = QDoubleSpinBox()
-        self.opacity_spinbox.setRange(0.0, 1.0)
-        self.opacity_spinbox.setSingleStep(0.1)
-        self.opacity_spinbox.setValue(0.5)
-        self.opacity_spinbox.valueChanged.connect(self.opacity_changed)
-        self.addWidget(self.opacity_spinbox)
+        opacity_spinbox = QDoubleSpinBox()
+        opacity_spinbox.setRange(0.0, 1.0)
+        opacity_spinbox.setSingleStep(0.1)
+        opacity_spinbox.setValue(0.5)
+        opacity_spinbox.valueChanged.connect(self.opacity_changed)
+        self.addWidget(opacity_spinbox)
 
         self.addSeparator()
 
-        # Zoom controls
+        # Zoom control
         self.addWidget(QLabel("Zoom:"))
-        self.zoom_spinbox = QDoubleSpinBox()
-        self.zoom_spinbox.setRange(0.1, 5.0)
-        self.zoom_spinbox.setSingleStep(0.1)
-        self.zoom_spinbox.setValue(1.0)
-        self.zoom_spinbox.valueChanged.connect(self.zoom_changed)
-        self.addWidget(self.zoom_spinbox)
+        zoom_spinbox = QDoubleSpinBox()
+        zoom_spinbox.setRange(0.1, 5.0)
+        zoom_spinbox.setSingleStep(0.1)
+        zoom_spinbox.setValue(1.0)
+        zoom_spinbox.valueChanged.connect(self.zoom_changed)
+        self.addWidget(zoom_spinbox)
+
+        self.addSeparator()
+
+        # Smoothing control
+        self.addWidget(QLabel("Edge Smoothing:"))
+        smoothing_spinbox = QSpinBox()
+        smoothing_spinbox.setRange(0, 50)  # Maximum window size of 50 pixels
+        smoothing_spinbox.setSingleStep(1)
+        smoothing_spinbox.setValue(0)
+        smoothing_spinbox.setToolTip("Window size for edge smoothing (0 = no smoothing)")
+        smoothing_spinbox.valueChanged.connect(self.smoothing_changed)
+        self.addWidget(smoothing_spinbox)
 
     def set_frame_range(self, max_frames):
         """Set the maximum number of frames."""
@@ -66,4 +79,3 @@ class ToolBar(QToolBar):
         current = self.frame_spinbox.value()
         if current < self.frame_spinbox.maximum():
             self.frame_spinbox.setValue(current + 1)
-

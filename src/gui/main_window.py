@@ -42,6 +42,7 @@ class MainWindow(QMainWindow):
         self.toolbar.frame_changed.connect(self.update_frame)
         self.toolbar.opacity_changed.connect(self.update_opacity)
         self.toolbar.zoom_changed.connect(self.update_zoom)
+        self.toolbar.smoothing_changed.connect(self.update_smoothing)
         self.addToolBar(self.toolbar)
 
         # Create image viewer
@@ -55,6 +56,15 @@ class MainWindow(QMainWindow):
 
         # Set window size
         self.resize(1200, 800)
+
+    def update_smoothing(self, window_size):
+        """Update edge smoothing."""
+        self.edge_detector.set_smoothing(window_size)
+        self.update_display()
+
+        # Re-run intensity analysis if it exists
+        if self.results_window is not None and self.results_window.isVisible():
+            self.analyze_edge_intensity(reuse_settings=True)
 
     def create_menu_bar(self):
         menubar = self.menuBar()
@@ -199,13 +209,15 @@ class MainWindow(QMainWindow):
                 self.status_bar.showMessage("Error during edge detection")
             self.update_display()
 
-    def analyze_edge_intensity(self):
+    def analyze_edge_intensity(self, reuse_settings=False):
         """Run edge intensity analysis."""
         print("Starting edge intensity analysis")  # Debug print
         if self.edge_detector.contours:
-            # Show settings dialog
-            dialog = IntensityAnalysisDialog(self)
-            if dialog.exec():
+            # Only show settings dialog if not reusing settings
+            if not reuse_settings:
+                dialog = IntensityAnalysisDialog(self)
+                if not dialog.exec():
+                    return
                 settings = dialog.get_settings()
                 print("Analysis settings:", settings)  # Debug print
 
@@ -217,50 +229,52 @@ class MainWindow(QMainWindow):
                     settings['measure_type']
                 )
 
-                # Get current frame data
-                cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
-                contour = self.edge_detector.contours.get(self.tiff_handler.current_frame)
+            # Get current frame data
+            cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
+            # Get smoothed contour if smoothing is applied, otherwise original contour
+            contour = self.edge_detector.get_contour(self.tiff_handler.current_frame)
 
-                if piezo_frame is not None and contour is not None:
-                    # Run analysis
-                    self.status_bar.showMessage("Analyzing edge intensity...")
-                    print("Running intensity analysis")  # Debug print
-                    success = self.intensity_analyzer.analyze_frame(
-                        piezo_frame,
-                        contour,
+            if piezo_frame is not None and contour is not None:
+                # Run analysis
+                self.status_bar.showMessage("Analyzing edge intensity...")
+                print("Running intensity analysis")  # Debug print
+                success = self.intensity_analyzer.analyze_frame(
+                    piezo_frame,
+                    contour,
+                    self.tiff_handler.current_frame
+                )
+
+                if success:
+                    print("Analysis successful, creating results window")  # Debug print
+                    # Get results data
+                    intensities, points, _ = self.intensity_analyzer.get_frame_data(
                         self.tiff_handler.current_frame
                     )
 
-                    if success:
-                        print("Analysis successful, creating results window")  # Debug print
-                        # Get results data
-                        intensities, points, _ = self.intensity_analyzer.get_frame_data(
-                            self.tiff_handler.current_frame
-                        )
+                    print(f"Got data: {intensities is not None}, {points is not None}")  # Debug print
 
-                        print(f"Got data: {intensities is not None}, {points is not None}")  # Debug print
-
-                        # Create new results window
+                    # Create new results window if needed
+                    if self.results_window is None:
+                        print("Creating new results window")  # Debug print
                         self.results_window = ResultsWindow(self)
-                        print("Created results window")  # Debug print
 
-                        # Update results
-                        self.results_window.update_results(
-                            intensities,
-                            points,
-                            self.tiff_handler.current_frame
-                        )
-                        print("Updated results")  # Debug print
+                    # Update results
+                    self.results_window.update_results(
+                        intensities,
+                        points,
+                        self.tiff_handler.current_frame
+                    )
+                    print("Updated results")  # Debug print
 
-                        # Show window
-                        self.results_window.show()
-                        self.results_window.raise_()
-                        print("Showed results window")  # Debug print
+                    # Show window
+                    self.results_window.show()
+                    self.results_window.raise_()
+                    print("Showed results window")  # Debug print
 
-                        self.status_bar.showMessage("Edge intensity analysis complete")
-                    else:
-                        print("Analysis failed")  # Debug print
-                        self.status_bar.showMessage("Error in intensity analysis")
+                    self.status_bar.showMessage("Edge intensity analysis complete")
+                else:
+                    print("Analysis failed")  # Debug print
+                    self.status_bar.showMessage("Error in intensity analysis")
         else:
             self.status_bar.showMessage("Please detect cell edges first")
 
