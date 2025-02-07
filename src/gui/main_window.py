@@ -139,15 +139,26 @@ class MainWindow(QMainWindow):
         self.image_viewer.set_zoom(value)
 
     def update_display(self):
+        """Update display with current frame data."""
         # Update main display
         cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
         if cell_frame is not None and piezo_frame is not None:
-            edge_image = self.edge_detector.get_edge_image(self.tiff_handler.current_frame)
-
-            # Get sampling vectors if results window is showing them
+            # Get display options from results window
             show_vectors = (self.results_window is not None and
                           self.results_window.isVisible() and
                           self.results_window.show_vectors)
+
+            show_smoothed = (self.results_window is not None and
+                           self.results_window.isVisible() and
+                           self.results_window.show_smoothed)
+
+            # Get edge image with appropriate contours
+            edge_image = self.edge_detector.get_edge_image(
+                self.tiff_handler.current_frame,
+                show_smoothed=show_smoothed
+            )
+
+            print(f"Update display - Show smoothed: {show_smoothed}")  # Debug print
 
             if show_vectors:
                 # Get measurement points and normals
@@ -162,7 +173,7 @@ class MainWindow(QMainWindow):
                 sampling_depth = None
                 vector_width = None
 
-            # Create overlay with optional vectors
+            # Create overlay with all components
             pixmap = self.overlay_handler.create_overlay(
                 cell_frame,
                 piezo_frame,
@@ -171,7 +182,8 @@ class MainWindow(QMainWindow):
                 points,
                 normals,
                 sampling_depth,
-                vector_width
+                vector_width,
+                show_smoothed
             )
             self.image_viewer.update_display(pixmap)
 

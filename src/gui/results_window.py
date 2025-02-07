@@ -1,6 +1,6 @@
 # src/gui/results_window.py
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QDockWidget,
-                           QLabel, QPushButton)
+                           QLabel, QPushButton, QHBoxLayout)
 from PyQt6.QtCore import Qt
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -59,6 +59,7 @@ class ResultsWindow(QMainWindow):
         self.setWindowTitle("Analysis Results")
         self.parent = parent
         self.show_vectors = False
+        self.show_smoothed = False
         self.setup_ui()
 
     def setup_ui(self):
@@ -67,11 +68,23 @@ class ResultsWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
 
-        # Add toggle button
-        self.toggle_button = QPushButton("Toggle Sampling Vectors")
-        self.toggle_button.setCheckable(True)
-        self.toggle_button.clicked.connect(self.toggle_vectors)
-        self.layout.addWidget(self.toggle_button)
+        # Create button layout
+        button_layout = QHBoxLayout()
+
+        # Add vector toggle button
+        self.vector_button = QPushButton("Toggle Sampling Vectors")
+        self.vector_button.setCheckable(True)
+        self.vector_button.clicked.connect(self.toggle_vectors)
+        button_layout.addWidget(self.vector_button)
+
+        # Add smoothed line toggle button
+        self.smoothed_button = QPushButton("Toggle Smoothed Line")
+        self.smoothed_button.setCheckable(True)
+        self.smoothed_button.clicked.connect(self.toggle_smoothed)
+        button_layout.addWidget(self.smoothed_button)
+
+        # Add button layout to main layout
+        self.layout.addLayout(button_layout)
 
         # Add plots
         self.plots = ResultsPlot()
@@ -82,9 +95,15 @@ class ResultsWindow(QMainWindow):
 
     def toggle_vectors(self):
         """Toggle the display of sampling vectors."""
-        self.show_vectors = self.toggle_button.isChecked()
+        self.show_vectors = self.vector_button.isChecked()
         if self.parent:
-            self.parent.update_display()  # Trigger main window update
+            self.parent.update_display()
+
+    def toggle_smoothed(self):
+        """Toggle the display of smoothed line."""
+        self.show_smoothed = self.smoothed_button.isChecked()
+        if self.parent:
+            self.parent.update_display()
 
     def update_results(self, intensities, positions, current_frame):
         """Update results display."""

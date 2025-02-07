@@ -12,22 +12,12 @@ class ImageOverlay:
 
     def create_overlay(self, cell_image, piezo_image, edge_image=None, show_vectors=False,
                       measurement_points=None, normal_vectors=None, sampling_depth=None,
-                      vector_width=None):
-        """
-        Create an overlay of cell boundary, PIEZO1 images, and detected edges.
-
-        Args:
-            cell_image (np.ndarray): Binary cell image
-            piezo_image (np.ndarray): PIEZO1 fluorescence image
-            edge_image (np.ndarray, optional): Detected edge image
-            show_vectors (bool): Whether to show sampling vectors
-            measurement_points (np.ndarray): Points along edge where intensity is measured
-            normal_vectors (np.ndarray): Normal vectors at measurement points
-            sampling_depth (int): Depth of sampling into cell
-            vector_width (int): Width of sampling vectors
-        """
+                      vector_width=None, show_smoothed=False):
+        """Create an overlay with all components."""
         if cell_image is None or piezo_image is None:
             return None
+
+        print(f"Creating overlay. Show smoothed: {show_smoothed}")  # Debug print
 
         # Create RGB image
         overlay = np.zeros((*cell_image.shape, 3), dtype=np.uint8)
@@ -42,11 +32,25 @@ class ImageOverlay:
         cell_overlay = np.zeros_like(overlay)
         cell_overlay[cell_normalized > 0] = self.cell_color
 
-        # Add detected edges if available (in blue)
+        # Add edge lines
         if edge_image is not None:
+            print(f"Edge image unique values: {np.unique(edge_image)}")  # Debug print
+
+            # Create separate edge overlays for original and smoothed
             edge_overlay = np.zeros_like(overlay)
-            edge_overlay[edge_image > 0] = (0, 0, 255)  # Blue color for edges
+
+            # Original edge (255) in blue
+            original_mask = (edge_image == 255)
+            edge_overlay[original_mask] = (0, 0, 255)
+
+            # Smoothed edge (128) in red if requested
+            smoothed_mask = (edge_image == 128)
+            if show_smoothed and np.any(smoothed_mask):
+                print("Adding smoothed edge line")  # Debug print
+                edge_overlay[smoothed_mask] = (255, 0, 0)
+
             overlay = cv2.addWeighted(edge_overlay, 1.0, overlay, 1.0, 0)
+
 
         # Add sampling vectors if requested
         if (show_vectors and measurement_points is not None and
@@ -69,7 +73,6 @@ class ImageOverlay:
                         end = (point + normal * sampling_depth).astype(np.int32)
 
                         # Calculate perpendicular vector for width
-                        # Using the actual vector_width parameter from user
                         half_width = vector_width / 2
                         perp_vector = np.array([-normal[1], normal[0]]) * half_width
 
