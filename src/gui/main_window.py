@@ -59,12 +59,22 @@ class MainWindow(QMainWindow):
 
     def update_smoothing(self, window_size):
         """Update edge smoothing."""
+        print(f"Setting smoothing window size to: {window_size}")
         self.edge_detector.set_smoothing(window_size)
-        self.update_display()
 
-        # Re-run intensity analysis if it exists
-        if self.results_window is not None and self.results_window.isVisible():
+        # Re-run intensity analysis with existing settings
+        if hasattr(self, 'intensity_analyzer'):
             self.analyze_edge_intensity(reuse_settings=True)
+
+            # Re-run curvature analysis if it was previously done
+            if hasattr(self, 'curvature_analyzer') and self.results_window is not None:
+                # Check if curvature data exists for current frame
+                curvature_data = self.curvature_analyzer.get_curvature_data(self.tiff_handler.current_frame)
+                if curvature_data[0] is not None:  # If curvature exists
+                    self.calculate_curvature()
+
+        # Update display
+        self.update_display()
 
     def create_menu_bar(self):
         menubar = self.menuBar()
@@ -223,15 +233,15 @@ class MainWindow(QMainWindow):
 
     def analyze_edge_intensity(self, reuse_settings=False):
         """Run edge intensity analysis."""
-        print("Starting edge intensity analysis")  # Debug print
         if self.edge_detector.contours:
-            # Only show settings dialog if not reusing settings
             if not reuse_settings:
+                # Show settings dialog only if not reusing settings
                 dialog = IntensityAnalysisDialog(self)
                 if not dialog.exec():
                     return
+
                 settings = dialog.get_settings()
-                print("Analysis settings:", settings)  # Debug print
+                print("Analysis settings:", settings)
 
                 # Set parameters
                 self.intensity_analyzer.set_parameters(
@@ -243,13 +253,11 @@ class MainWindow(QMainWindow):
 
             # Get current frame data
             cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
-            # Get smoothed contour if smoothing is applied, otherwise original contour
             contour = self.edge_detector.get_contour(self.tiff_handler.current_frame)
 
             if piezo_frame is not None and contour is not None:
                 # Run analysis
                 self.status_bar.showMessage("Analyzing edge intensity...")
-                print("Running intensity analysis")  # Debug print
                 success = self.intensity_analyzer.analyze_frame(
                     piezo_frame,
                     contour,
@@ -257,48 +265,83 @@ class MainWindow(QMainWindow):
                 )
 
                 if success:
-                    print("Analysis successful, creating results window")  # Debug print
+                    # Create/show results window
+                    if self.results_window is None:
+                        self.results_window = ResultsWindow(self)
+
                     # Get results data
                     intensities, points, _ = self.intensity_analyzer.get_frame_data(
                         self.tiff_handler.current_frame
                     )
 
-                    print(f"Got data: {intensities is not None}, {points is not None}")  # Debug print
-
-                    # Create new results window if needed
-                    if self.results_window is None:
-                        print("Creating new results window")  # Debug print
-                        self.results_window = ResultsWindow(self)
-
-                    # Update results
+                    # Update results without curvature data
                     self.results_window.update_results(
                         intensities,
                         points,
                         self.tiff_handler.current_frame
                     )
-                    print("Updated results")  # Debug print
 
-                    # Show window
                     self.results_window.show()
-                    self.results_window.raise_()
-                    print("Showed results window")  # Debug print
-
                     self.status_bar.showMessage("Edge intensity analysis complete")
                 else:
-                    print("Analysis failed")  # Debug print
                     self.status_bar.showMessage("Error in intensity analysis")
         else:
             self.status_bar.showMessage("Please detect cell edges first")
 
     def calculate_curvature(self):
+        """Calculate and display membrane curvature."""
         if self.edge_detector.contours is not None:
             self.status_bar.showMessage("Calculating membrane curvature...")
-            curvature, smoothed_contour = self.curvature_analyzer.calculate_curvature(
-                self.edge_detector.contours
+
+            # Get current contour
+            contour = self.edge_detector.get_contour(self.tiff_handler.current_frame)
+            print(f"Retrieved contour for frame {self.tiff_handler.current_frame}")
+
+            # Get current measurement points if available
+            _, measurement_points, _ = self.intensity_analyzer.get_frame_data(
+                self.tiff_handler.current_frame
             )
-            if curvature is not None:
-                self.update_display()
-                self.status_bar.showMessage("Curvature calculation complete")
+
+            if contour is not None:
+                print(f"Contour ready for processing: shape={contour.shape}")
+                # Calculate curvature using measurement points
+                curvature, smoothed_contour = self.curvature_analyzer.calculate_curvature(
+                    contour,
+                    self.tiff_handler.current_frame,
+                    measurement_points=measurement_points
+                )
+
+                if curvature is not None:
+                    print("Curvature calculation successful")
+                    # Add curvature visualization to the results window
+                    if self.results_window is None:
+                        self.results_window = ResultsWindow(self)
+
+                    # Get current intensity data
+                    intensities, points, _ = self.intensity_analyzer.get_frame_data(
+                        self.tiff_handler.current_frame
+                    )
+
+                    # Update results with curvature data
+                    self.results_window.update_results(
+                        intensities,
+                        points,
+                        self.tiff_handler.current_frame,
+                        curvature=curvature,
+                        smoothed_contour=smoothed_contour
+                    )
+
+                    self.results_window.show()
+                    self.status_bar.showMessage("Curvature calculation complete")
+                else:
+                    print("Curvature calculation failed")
+                    self.status_bar.showMessage("Error calculating curvature")
+            else:
+                print("No valid contour found")
+                self.status_bar.showMessage("No valid contour found")
+        else:
+            print("No contours available")
+            self.status_bar.showMessage("No contours available")
 
     def save_analysis(self):
         # Add save functionality here

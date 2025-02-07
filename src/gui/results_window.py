@@ -15,18 +15,12 @@ class ResultsPlot(QWidget):
     def setup_ui(self):
         layout = QVBoxLayout(self)
 
-        # Create figure
-        self.figure = Figure(figsize=(8, 6))
+        # Create figure with appropriate size
+        self.figure = Figure(figsize=(15, 8))
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
 
-        # Create subplots
-        self.intensity_ax = self.figure.add_subplot(211)  # Intensity plot
-        self.position_ax = self.figure.add_subplot(212)  # Position indicator
-
-        self.figure.tight_layout()
-
-    def update_plots(self, intensities, positions, current_frame):
+    def update_plots(self, intensities, positions, current_frame, curvature=None, smoothed_contour=None):
         """Update plots with new data."""
         if intensities is None or positions is None:
             return
@@ -34,38 +28,83 @@ class ResultsPlot(QWidget):
         # Clear entire figure
         self.figure.clear()
 
-        # Recreate subplots
-        self.intensity_ax = self.figure.add_subplot(211)
-        self.position_ax = self.figure.add_subplot(212)
+        if curvature is not None:
+            # Three row layout with intensity profile, curvature profile, and three plots at bottom
+            gs = self.figure.add_gridspec(3, 3, height_ratios=[1, 1, 1], hspace=0.4, wspace=0.4)
 
-        # Plot intensities
+            # Intensity profile spanning all columns in first row
+            ax_intensity = self.figure.add_subplot(gs[0, :])
+
+            # Curvature profile spanning all columns in second row
+            ax_curv = self.figure.add_subplot(gs[1, :])
+
+            # Position plots and correlation in bottom row
+            ax_pos_int = self.figure.add_subplot(gs[2, 0])  # Intensity map
+            ax_pos_curv = self.figure.add_subplot(gs[2, 1])  # Curvature map
+            ax_corr = self.figure.add_subplot(gs[2, 2])  # Correlation plot
+
+            # Plot curvature profile
+            x = np.arange(len(curvature))
+            ax_curv.plot(x, curvature, 'r-', label='Curvature')
+            ax_curv.axhline(y=0, color='k', linestyle='--', alpha=0.3)
+            ax_curv.set_title('Edge Curvature Profile')
+            ax_curv.set_xlabel('Position along edge')
+            ax_curv.set_ylabel('Curvature')
+            ax_curv.grid(True)
+            ax_curv.legend()
+
+            # Plot position colored by curvature
+            scatter_curv = ax_pos_curv.scatter(positions[:, 0], positions[:, 1],
+                                             c=curvature, cmap='RdBu_r',
+                                             s=100)
+            if smoothed_contour is not None:
+                ax_pos_curv.plot(smoothed_contour[:, 0], smoothed_contour[:, 1],
+                               'k--', alpha=0.5)
+            ax_pos_curv.set_title('Curvature Map')
+            self.figure.colorbar(scatter_curv, ax=ax_pos_curv, label='Curvature')
+            ax_pos_curv.invert_yaxis()
+            ax_pos_curv.set_aspect('equal')
+
+            # Plot correlation
+            ax_corr.scatter(curvature, intensities, c='purple', alpha=0.5)
+            ax_corr.set_title('Intensity vs Curvature')
+            ax_corr.set_xlabel('Curvature')
+            ax_corr.set_ylabel('Intensity')
+            ax_corr.grid(True)
+            correlation = np.corrcoef(curvature, intensities)[0, 1]
+            ax_corr.text(0.05, 0.95, f'r = {correlation:.3f}',
+                        transform=ax_corr.transAxes,
+                        verticalalignment='top')
+
+        else:
+            # Two subplot layout for intensity only
+            gs = self.figure.add_gridspec(2, 1, height_ratios=[1, 1], hspace=0.4)
+            ax_intensity = self.figure.add_subplot(gs[0])
+            ax_pos_int = self.figure.add_subplot(gs[1])
+
+        # Plot intensity profile
         x = np.arange(len(intensities))
-        self.intensity_ax.plot(x, intensities, 'b-', label='Intensity')
-        self.intensity_ax.set_title('Edge Intensity Profile')
-        self.intensity_ax.set_xlabel('Position along edge')
-        self.intensity_ax.set_ylabel('Intensity')
-        self.intensity_ax.grid(True)
+        ax_intensity.plot(x, intensities, 'b-', label='Intensity')
+        ax_intensity.set_title('Edge Intensity Profile')
+        ax_intensity.set_xlabel('Position along edge')
+        ax_intensity.set_ylabel('Intensity')
+        ax_intensity.grid(True)
+        ax_intensity.legend()
 
-        # Plot measurement positions with intensity-based coloring
-        scatter = self.position_ax.scatter(positions[:, 0], positions[:, 1],
-                                         c=intensities, cmap='viridis',
-                                         s=100,  # Larger points
-                                         label='Measurement Points')
-
-        # Add colorbar
-        self.figure.colorbar(scatter, ax=self.position_ax, label='Intensity')
-
-        # Flip y-axis to match main display
-        self.position_ax.invert_yaxis()
-
-        self.position_ax.set_title('Measurement Positions')
-        self.position_ax.set_aspect('equal')
-        self.position_ax.grid(True)
-
-        # Adjust layout
-        self.figure.tight_layout()
+        # Plot position colored by intensity (always shown)
+        scatter_int = ax_pos_int.scatter(positions[:, 0], positions[:, 1],
+                                       c=intensities, cmap='viridis',
+                                       s=100)
+        if smoothed_contour is not None:
+            ax_pos_int.plot(smoothed_contour[:, 0], smoothed_contour[:, 1],
+                           'r--', alpha=0.5)
+        ax_pos_int.set_title('Intensity Map')
+        self.figure.colorbar(scatter_int, ax=ax_pos_int, label='Intensity')
+        ax_pos_int.invert_yaxis()
+        ax_pos_int.set_aspect('equal')
 
         # Update canvas
+        self.figure.tight_layout()
         self.canvas.draw()
 
 class ResultsWindow(QMainWindow):
@@ -106,7 +145,7 @@ class ResultsWindow(QMainWindow):
         self.layout.addWidget(self.plots)
 
         # Set window properties
-        self.resize(800, 600)
+        self.resize(1200, 800)
 
     def toggle_vectors(self):
         """Toggle the display of sampling vectors."""
@@ -120,6 +159,7 @@ class ResultsWindow(QMainWindow):
         if self.parent:
             self.parent.update_display()
 
-    def update_results(self, intensities, positions, current_frame):
+    def update_results(self, intensities, positions, current_frame, curvature=None, smoothed_contour=None):
         """Update results display."""
-        self.plots.update_plots(intensities, positions, current_frame)
+        self.plots.update_plots(intensities, positions, current_frame,
+                              curvature=curvature, smoothed_contour=smoothed_contour)
