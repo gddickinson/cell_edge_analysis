@@ -12,7 +12,8 @@ The tool enables researchers to:
 - Overlay and visualize both data streams
 - Detect and analyze cell membrane edges
 - Measure PIEZO1 fluorescence intensity along the cell edge
-- Analyze the relationship between membrane curvature and PIEZO1 distribution
+- Calculate and analyze membrane curvature
+- Correlate PIEZO1 distribution with membrane geometry
 
 ## Scientific Background
 
@@ -34,6 +35,7 @@ PIEZO1 is a mechanosensitive ion channel protein that plays a crucial role in ce
 1. Edge Detection
    - Automated cell edge detection
    - Contour extraction and visualization
+   - Adjustable edge smoothing
    - Frame-by-frame edge tracking
 
 2. Intensity Analysis
@@ -43,11 +45,20 @@ PIEZO1 is a mechanosensitive ion channel protein that plays a crucial role in ce
      - Mean intensity
      - Maximum intensity
      - Minimum intensity
+   - Interior point validation
    - Visual representation of sampling regions
 
-3. Data Visualization
+3. Curvature Analysis
+   - Local curvature calculation
+   - Adjustable smoothing parameters
+   - Correlation with intensity measurements
+   - Interactive visualization
+
+4. Data Visualization
    - Real-time intensity profiles
-   - Edge position plotting
+   - Curvature profiles
+   - Edge position plotting with intensity/curvature coloring
+   - Intensity-curvature correlation plots
    - Sampling vector visualization
    - Frame-synchronized display
 
@@ -63,6 +74,7 @@ piezo1_analysis/
     ├── gui/
     │   ├── main_window.py
     │   ├── image_view.py
+    │   ├── analysis_dialog.py
     │   └── results_window.py
     ├── image_processing/
     │   ├── tiff_handler.py
@@ -78,6 +90,7 @@ piezo1_analysis/
 - NumPy: Numerical computations
 - OpenCV: Image processing
 - scikit-image: Scientific image analysis
+- scipy: Scientific computing
 - matplotlib: Data visualization
 
 ### Core Components
@@ -85,6 +98,7 @@ piezo1_analysis/
 #### Edge Detection
 - Uses contour detection algorithms
 - Implements noise reduction and filtering
+- Adjustable edge smoothing
 - Handles frame-by-frame tracking
 - Border artifact removal
 
@@ -94,13 +108,21 @@ piezo1_analysis/
   - Customizable depth into cell
   - Adjustable width for sampling
   - Multiple measurement methods
+- Interior direction validation
 - Border region exclusion
 - Collision detection for sampling regions
 
+#### Curvature Analysis
+- Local curvature calculation
+- Adaptable smoothing parameters
+- Synchronized sampling points
+- Correlation analysis
+
 #### Visualization
 - Real-time overlay generation
-- Synchronized multi-window display
+- Multi-plot result display
 - Interactive plot updates
+- Color-coded position maps
 - Vector visualization for sampling regions
 
 ## Installation
@@ -135,9 +157,11 @@ python main.py
 
 3. Analysis workflow:
    1. Detect cell edges using "Analysis → Detect Cell Edges"
-   2. Configure and run intensity analysis using "Analysis → Analyze Edge Intensity"
-   3. Adjust visualization using the toolbar controls
-   4. Toggle sampling vector display in the results window
+   2. Adjust edge smoothing if needed using the slider
+   3. Configure and run intensity analysis using "Analysis → Analyze Edge Intensity"
+   4. Calculate curvature using "Analysis → Calculate Curvature"
+   5. Adjust visualization using the toolbar controls
+   6. Toggle sampling vectors and smoothed line in the results window
 
 ## Data Requirements
 
@@ -148,7 +172,7 @@ python main.py
 
 ## Contributing
 
-We welcome contributions! Please read our contributing guidelines and submit pull requests for:
+Contributions welcome! Please read the contributing guidelines and submit pull requests for:
 - Bug fixes
 - New features
 - Documentation improvements
@@ -157,7 +181,6 @@ We welcome contributions! Please read our contributing guidelines and submit pul
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
 
 ## Contact
 
