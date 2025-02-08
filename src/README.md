@@ -10,7 +10,7 @@ The PIEZO1 analysis pipeline is designed to quantitatively assess the relationsh
 graph TD
     A[TIFF Stacks] --> B[Image Processing]
     B --> C[Edge Detection]
-    B --> D[Intensity Analysis]
+    C --> D[Intensity Analysis]
     C --> E[Curvature Analysis]
     D --> F[Correlation Analysis]
     E --> F
