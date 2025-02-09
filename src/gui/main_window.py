@@ -138,8 +138,20 @@ class MainWindow(QMainWindow):
                 self.update_display()
 
     def update_frame(self, frame_number):
+        """Update frame and all associated displays."""
         if self.tiff_handler.set_frame(frame_number - 1):  # Convert to 0-based index
+            # Update display
             self.update_display()
+
+            # # Re-run analyses for new frame if they were previously done
+            # if hasattr(self, 'intensity_analyzer'):
+            #     self.analyze_edge_intensity(reuse_settings=True)
+
+            #     # Re-run curvature if it was previously done
+            #     if hasattr(self, 'curvature_analyzer') and self.results_window is not None:
+            #         curvature_data = self.curvature_analyzer.get_curvature_data(self.tiff_handler.current_frame)
+            #         if curvature_data[0] is not None:
+            #             self.calculate_curvature()
 
     def update_opacity(self, value):
         self.overlay_handler.set_opacity(value)
@@ -232,7 +244,7 @@ class MainWindow(QMainWindow):
             self.update_display()
 
     def analyze_edge_intensity(self, reuse_settings=False):
-        """Run edge intensity analysis."""
+        """Run edge intensity analysis for current frame."""
         if self.edge_detector.contours:
             if not reuse_settings:
                 # Show settings dialog only if not reusing settings
@@ -252,8 +264,9 @@ class MainWindow(QMainWindow):
                 )
 
             # Get current frame data
+            current_frame = self.tiff_handler.current_frame
             cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
-            contour = self.edge_detector.get_contour(self.tiff_handler.current_frame)
+            contour = self.edge_detector.get_contour(current_frame)
 
             if piezo_frame is not None and contour is not None:
                 # Run analysis
@@ -261,7 +274,7 @@ class MainWindow(QMainWindow):
                 success = self.intensity_analyzer.analyze_frame(
                     piezo_frame,
                     contour,
-                    self.tiff_handler.current_frame
+                    current_frame
                 )
 
                 if success:
@@ -271,14 +284,14 @@ class MainWindow(QMainWindow):
 
                     # Get results data
                     intensities, points, _ = self.intensity_analyzer.get_frame_data(
-                        self.tiff_handler.current_frame
+                        current_frame
                     )
 
                     # Update results without curvature data
                     self.results_window.update_results(
                         intensities,
                         points,
-                        self.tiff_handler.current_frame
+                        current_frame
                     )
 
                     self.results_window.show()
@@ -289,17 +302,20 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage("Please detect cell edges first")
 
     def calculate_curvature(self):
-        """Calculate and display membrane curvature."""
+        """Calculate and display membrane curvature for current frame."""
         if self.edge_detector.contours is not None:
             self.status_bar.showMessage("Calculating membrane curvature...")
 
+            # Get current frame
+            current_frame = self.tiff_handler.current_frame
+
             # Get current contour
-            contour = self.edge_detector.get_contour(self.tiff_handler.current_frame)
-            print(f"Retrieved contour for frame {self.tiff_handler.current_frame}")
+            contour = self.edge_detector.get_contour(current_frame)
+            print(f"Retrieved contour for frame {current_frame}")
 
             # Get current measurement points if available
             _, measurement_points, _ = self.intensity_analyzer.get_frame_data(
-                self.tiff_handler.current_frame
+                current_frame
             )
 
             if contour is not None:
@@ -307,7 +323,7 @@ class MainWindow(QMainWindow):
                 # Calculate curvature using measurement points
                 curvature, smoothed_contour = self.curvature_analyzer.calculate_curvature(
                     contour,
-                    self.tiff_handler.current_frame,
+                    current_frame,
                     measurement_points=measurement_points
                 )
 
@@ -319,14 +335,14 @@ class MainWindow(QMainWindow):
 
                     # Get current intensity data
                     intensities, points, _ = self.intensity_analyzer.get_frame_data(
-                        self.tiff_handler.current_frame
+                        current_frame
                     )
 
                     # Update results with curvature data
                     self.results_window.update_results(
                         intensities,
                         points,
-                        self.tiff_handler.current_frame,
+                        current_frame,
                         curvature=curvature,
                         smoothed_contour=smoothed_contour
                     )

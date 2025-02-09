@@ -42,7 +42,7 @@ ImageOverlay:
 #### a. Edge Detection
 ```python
 Input: Binary segmented image
-Process: 
+Process:
     1. Contour detection
     2. Edge smoothing (adjustable window)
     3. Boundary validation
@@ -51,7 +51,7 @@ Output: Cell edge coordinates and smoothed contour
 
 #### b. Intensity Analysis
 ```python
-Input: 
+Input:
     - PIEZO1 fluorescence image
     - Cell edge coordinates
 Process:
@@ -106,17 +106,17 @@ class AnalysisPipeline:
         # 1. Get current frames
         cell_frame = self.tiff_handler.get_cell_frame(frame_index)
         piezo_frame = self.tiff_handler.get_piezo_frame(frame_index)
-        
+
         # 2. Detect and analyze edge
         edge = self.edge_detector.detect(cell_frame)
         smoothed_edge = self.edge_detector.smooth(edge)
-        
+
         # 3. Calculate measurements
         intensities = self.intensity_analyzer.measure(
             piezo_frame, smoothed_edge)
         curvatures = self.curvature_analyzer.calculate(
             smoothed_edge)
-            
+
         # 4. Update visualization
         self.results_window.update(
             intensities, curvatures, smoothed_edge)
