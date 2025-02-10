@@ -343,8 +343,8 @@ def plot_results(cell_image, piezo_image, edge_image, intensities, points,
 def main():
     try:
         # File paths - replace with your actual file paths
-        cell_path = "/Users/george/Documents/python_projects/cell_edge_analysis/151_2019_07_29_TIRF_mKera_scratch_Pos7_DIC_Mask_test.tif"
-        piezo_path = "/Users/george/Documents/python_projects/cell_edge_analysis/151_2019_07_29_TIRF_mKera_scratch_1_MMStack_Pos7_piezo1.tif"
+        cell_path = "/Users/george/Documents/python_projects/cell_edge_analysis/151_2019_07_29_TIRF_mKera_scratch_Pos7_DIC_Mask_test_crop.tif"
+        piezo_path = "/Users/george/Documents/python_projects/cell_edge_analysis/151_2019_07_29_TIRF_mKera_scratch_1_MMStack_Pos7_piezo1_crop.tif"
 
         # Load first frames
         print("Loading image data...")

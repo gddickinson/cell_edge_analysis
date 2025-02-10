@@ -110,6 +110,4 @@ where:
 - Local intensity variations may affect measurements
 - Edge effects near image boundaries
 
-## References
-1. Differential Geometry concepts: do Carmo, "Differential Geometry of Curves and Surfaces"
-2. Image processing: Gonzalez & Woods, "Digital Image Processing"
+
