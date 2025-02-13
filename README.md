@@ -8,6 +8,81 @@ This tool enables simultaneous analysis of membrane curvature and PIEZO1 protein
 1. Binary segmented images showing cell position (cell mask)
 2. Fluorescence recordings of PIEZO1 protein distribution
 
+## Analysis Workflow
+
+The analysis pipeline consists of three main stages:
+
+1. **Edge Detection and Validation**
+   - Binary mask preprocessing using morphological operations
+   - Contour detection with sub-pixel accuracy
+   - Edge smoothing using Gaussian filtering
+   - Validation of edge continuity and border artifacts
+
+2. **Curvature Analysis**
+   - Local circle fitting to edge segments
+   - Calculation of signed curvature
+   - Statistical validation of measurements
+   - Reference to biological curvature scales
+
+3. **Fluorescence Analysis**
+   - Normal vector calculation at sampling points
+   - Rectangular sampling region definition
+   - Interior overlap verification
+   - Background-subtracted intensity measurement
+
+### Mathematical Framework
+
+#### Curvature Calculation
+The local curvature κ at each point is calculated using circle fitting:
+1. For each point p₀, consider a segment of length L centered at p₀
+2. Fit circle using algebraic least squares method:
+   - Transform to implicit form: (x - a)² + (y - b)² = r²
+   - Solve eigenvalue problem to find center (a,b) and radius r
+3. Calculate signed curvature: κ = ±1/r
+   - Sign determined by normal vector orientation
+   - Scaled to physical units (nm⁻¹)
+
+#### Fluorescence Sampling
+Intensity measurements use oriented rectangular sampling:
+1. Calculate normal vector n̂ at each point
+2. Define sampling rectangle R(w,d):
+   - Width w perpendicular to n̂
+   - Depth d along n̂
+3. Measure mean intensity I:
+   I = (1/A)∫∫ᵣ F(x,y) dx dy
+   where F is the fluorescence image and A is the area
+
+## Project Structure
+```
+piezo1_analysis/
+├── README.md
+├── curvature_simulation/          # Curvature simulation tools
+│   ├── bleb-analysis-readme.md
+│   └── simulate-bleb-curvature.py
+├── example_data/                  # Test datasets
+│   ├── test_cell_mask.tif
+│   └── test_piezo1.tif
+├── main.py                        # Application entry point
+├── requirements.txt               # Package dependencies
+├── src/                          # Source code
+│   ├── analysis/                 # Analysis modules
+│   │   ├── curvature_analyzer.py
+│   │   ├── edge_detection.py
+│   │   └── fluorescence_analyzer.py
+│   ├── gui/                      # User interface
+│   │   ├── analysis_panel.py
+│   │   ├── file_panel.py
+│   │   ├── main_window.py
+│   │   └── visualization_panel.py
+│   └── utils/                    # Utility functions
+│       ├── data_structures.py
+│       └── image_processing.py
+└── tests/                        # Test suite
+    ├── test_edge_detection.py
+    ├── test_curvature_analysis.py
+    └── test_fluorescence_analysis.py
+```
+
 ## Features
 
 ### Core Analysis Capabilities
@@ -131,59 +206,24 @@ These files demonstrate the expected format and can be used to test the analysis
 - Interior overlap verification
 - Background subtraction option
 
-## Project Structure
-piezo1_analysis/
-├── README.md
-├── curvature_simulation
-│   ├── bleb-analysis-readme.md
-│   └── simulate-bleb-curvature.py
-├── example_data
-│   ├── test_cell_mask.tif
-│   └── test_piezo1.tif
-├── main.py
-├── project-structure.py
-├── requirements.txt
-├── src
-│   ├── __init__.py
-│   ├── analysis
-│   │   ├── __init__.py
-│   │   ├── curvature_analyzer.py
-│   │   ├── edge_detection.py
-│   │   └── fluorescence_analyzer.py
-│   ├── gui
-│   │   ├── __init__.py
-│   │   ├── analysis_panel.py
-│   │   ├── file_panel.py
-│   │   ├── main_window.py
-│   │   └── visualization_panel.py
-│   └── utils
-│       ├── __init__.py
-│       ├── data_structures.py
-│       └── image_processing.py
-└── tests
-    └── __init__.py
-    ├── test_edge_detection.py
-    ├── test_curvature_analysis.py
-    └── test_fluorescence_analysis.py
 
-## Troubleshooting
+## References and Methods
 
-Common issues and solutions:
+### Edge Detection
+The edge detection algorithm uses OpenCV's `findContours` function with sub-pixel refinement, followed by optional Gaussian smoothing:
+```python
+σ_smooth = 1.0  # smoothing parameter
+edge_smooth = gaussian_filter1d(edge_points, σ_smooth, axis=0)
+```
 
-1. No edge detected:
-   - Check if cell mask is binary
-   - Ensure cell is not touching image borders
-   - Try adjusting minimum object size
+### Curvature Calculation
+Circle fitting uses the algebraic method described in:
+1. Pratt, V. "Direct least-squares fitting of algebraic surfaces." Computer Graphics 21(4):145-152 (1987)
+2. Taubin, G. "Estimation of planar curves, surfaces, and nonplanar space curves defined by implicit equations with applications to edge and range image segmentation." IEEE PAMI 13(11):1115-1138 (1991)
 
-2. Missing fluorescence measurements:
-   - Check interior threshold setting
-   - Verify fluorescence image alignment
-   - Ensure proper image bit depth
-
-3. Inconsistent curvature:
-   - Adjust smoothing parameter
-   - Increase segment length
-   - Check for edge artifacts
+### Fluorescence Analysis
+Intensity sampling follows methods similar to:
+- Aimon et al. "Membrane Shape Modulates Transmembrane Protein Distribution." Developmental Cell 28(2):212-218 (2014)
 
 ## Contributing
 
