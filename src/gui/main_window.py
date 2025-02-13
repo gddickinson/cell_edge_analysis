@@ -1,368 +1,234 @@
+#!/usr/bin/env python3
 # src/gui/main_window.py
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                           QLabel, QPushButton, QFileDialog, QMenuBar, QMenu,
-                           QStatusBar, QDialog, QSpinBox)
+
+import sys
+import numpy as np
+from PyQt6.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
+    QLabel, QPushButton, QFileDialog, QMessageBox
+)
 from PyQt6.QtCore import Qt
-from .image_view import ImageViewer
-from .toolbar import ToolBar
-from .analysis_dialog import IntensityAnalysisDialog
-from .results_window import ResultsWindow
-from ..image_processing.tiff_handler import TiffHandler
-from ..image_processing.overlay import ImageOverlay
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+from ..utils.data_structures import (
+    ImageData, EdgeData, CurvatureData, FluorescenceData, AnalysisParameters
+)
 from ..analysis.edge_detection import EdgeDetector
-from ..analysis.curvature import CurvatureAnalyzer
-from ..analysis.intensity_analyzer import IntensityAnalyzer
+from ..analysis.curvature_analyzer import CurvatureAnalyzer
+from ..analysis.fluorescence_analyzer import FluorescenceAnalyzer
+from .analysis_panel import AnalysisPanel
+from .visualization_panel import VisualizationPanel
+from .file_panel import FilePanel
 
 class MainWindow(QMainWindow):
+    """Main window for the PIEZO1 analysis application."""
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PIEZO1 Analysis Tool")
 
-        # Initialize handlers and windows
-        self.tiff_handler = TiffHandler()
-        self.overlay_handler = ImageOverlay()
-        self.edge_detector = EdgeDetector()
-        self.curvature_analyzer = CurvatureAnalyzer()
-        self.intensity_analyzer = IntensityAnalyzer()
-        self.results_window = None
+        # Initialize parameters and analysis objects
+        self.params = AnalysisParameters()
+        self.edge_detector = EdgeDetector(self.params)
+        self.curvature_analyzer = CurvatureAnalyzer(self.params)
+        self.fluorescence_analyzer = FluorescenceAnalyzer(self.params)
 
-        self.setup_ui()
+        # Data storage
+        self.cell_data = None
+        self.fluor_data = None
+        self.edge_data = None
+        self.curvature_data = None
+        self.fluorescence_data = None
 
-    def setup_ui(self):
-        # Set up the main widget and layout
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.layout = QVBoxLayout(self.central_widget)
+        self._init_ui()
 
-        # Create menu bar
-        self.create_menu_bar()
+    def _init_ui(self):
+        """Initialize the user interface."""
+        # Create central widget and main layout
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout(central_widget)
 
-        # Create toolbar
-        self.toolbar = ToolBar()
-        self.toolbar.frame_changed.connect(self.update_frame)
-        self.toolbar.opacity_changed.connect(self.update_opacity)
-        self.toolbar.zoom_changed.connect(self.update_zoom)
-        self.toolbar.smoothing_changed.connect(self.update_smoothing)
-        self.addToolBar(self.toolbar)
+        # Create horizontal layout for file panel and main content
+        h_layout = QHBoxLayout()
 
-        # Create image viewer
-        self.image_viewer = ImageViewer()
-        self.image_viewer.mouse_position.connect(self.update_status_bar)
-        self.layout.addWidget(self.image_viewer)
+        # Create and add file panel
+        self.file_panel = FilePanel()
+        self.file_panel.cell_mask_loaded.connect(self.on_cell_mask_loaded)
+        self.file_panel.fluorescence_loaded.connect(self.on_fluorescence_loaded)
+        h_layout.addWidget(self.file_panel)
+
+        # Create vertical layout for main content
+        main_content = QWidget()
+        main_layout = QVBoxLayout(main_content)
+
+        # Create tab widget for different views
+        self.tab_widget = QTabWidget()
+
+        # Create tabs
+        self.analysis_view = self._create_analysis_view()
+        self.debug_view = self._create_debug_view()
+
+        self.tab_widget.addTab(self.analysis_view, "Analysis")
+        self.tab_widget.addTab(self.debug_view, "Debug")
+
+        main_layout.addWidget(self.tab_widget)
+        h_layout.addWidget(main_content, stretch=2)  # Give main content more space
+
+        layout.addLayout(h_layout)
 
         # Create status bar
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
+        self.statusBar().showMessage("Ready")
 
-        # Set window size
-        self.resize(1200, 800)
+    def _create_analysis_view(self):
+        """Create the main analysis view."""
+        view = QWidget()
+        layout = QHBoxLayout(view)
 
-    def update_smoothing(self, window_size):
-        """Update edge smoothing."""
-        print(f"Setting smoothing window size to: {window_size}")
-        self.edge_detector.set_smoothing(window_size)
+        # Left side: Analysis parameters
+        self.analysis_panel = AnalysisPanel(self.params)
+        self.analysis_panel.parameters_changed.connect(self.update_analysis)
+        layout.addWidget(self.analysis_panel)
 
-        # Re-run intensity analysis with existing settings
-        if hasattr(self, 'intensity_analyzer'):
-            self.analyze_edge_intensity(reuse_settings=True)
+        # Right side: Visualization
+        self.visualization_panel = VisualizationPanel()
+        layout.addWidget(self.visualization_panel)
 
-            # Re-run curvature analysis if it was previously done
-            if hasattr(self, 'curvature_analyzer') and self.results_window is not None:
-                # Check if curvature data exists for current frame
-                curvature_data = self.curvature_analyzer.get_curvature_data(self.tiff_handler.current_frame)
-                if curvature_data[0] is not None:  # If curvature exists
-                    self.calculate_curvature()
+        return view
 
-        # Update display
-        self.update_display()
+    def _create_debug_view(self):
+        """Create the debug view."""
+        view = QWidget()
+        layout = QVBoxLayout(view)
 
-    def create_menu_bar(self):
-        menubar = self.menuBar()
+        # Add debug output text area
+        self.debug_text = QLabel("No analysis run yet")
+        self.debug_text.setWordWrap(True)
+        layout.addWidget(self.debug_text)
 
-        # File menu
-        file_menu = menubar.addMenu("File")
+        return view
 
-        load_cell_action = file_menu.addAction("Load Cell Stack")
-        load_cell_action.triggered.connect(self.load_cell_stack)
+    def on_cell_mask_loaded(self, image_data: ImageData):
+        """Handle loaded cell mask."""
+        self.cell_data = image_data
+        self.statusBar().showMessage(f"Loaded cell mask: {image_data.filename}")
+        self.run_analysis()
 
-        load_piezo_action = file_menu.addAction("Load PIEZO1 Stack")
-        load_piezo_action.triggered.connect(self.load_piezo_stack)
+    def on_fluorescence_loaded(self, image_data: ImageData):
+        """Handle loaded fluorescence image."""
+        self.fluor_data = image_data
+        self.statusBar().showMessage(f"Loaded fluorescence: {image_data.filename}")
+        self.run_analysis()
 
-        file_menu.addSeparator()
+    def run_analysis(self):
+        """Run the complete analysis pipeline."""
+        if self.cell_data is None:
+            return
 
-        save_action = file_menu.addAction("Save Analysis")
-        save_action.triggered.connect(self.save_analysis)
+        try:
+            # Detect cell edge
+            self.edge_data = self.edge_detector.detect_edge(self.cell_data)
+            if self.edge_data is None:
+                raise ValueError("Edge detection failed")
 
-        file_menu.addSeparator()
+            # If we have fluorescence data, get valid sampling points first
+            if self.fluor_data is not None:
+                # Get initial fluorescence measurements
+                self.fluorescence_data = self.fluorescence_analyzer.calculate_intensities(
+                    self.edge_data,
+                    self.fluor_data,
+                    self.cell_data
+                )
 
-        exit_action = file_menu.addAction("Exit")
-        exit_action.triggered.connect(self.close)
+                if self.fluorescence_data is None:
+                    raise ValueError("Fluorescence analysis failed")
 
-        # Analysis menu
-        analysis_menu = menubar.addMenu("Analysis")
+                # Get valid indices from fluorescence analysis
+                valid_indices = self.fluorescence_analyzer.get_valid_indices()
 
-        detect_edges_action = analysis_menu.addAction("Detect Cell Edges")
-        detect_edges_action.triggered.connect(self.detect_edges)
+                # Calculate curvature using only these valid points
+                self.curvature_data = self.curvature_analyzer.calculate_curvature(
+                    self.edge_data,
+                    valid_indices
+                )
+            else:
+                # If no fluorescence data, just do curvature analysis
+                self.curvature_data = self.curvature_analyzer.calculate_curvature(
+                    self.edge_data
+                )
 
-        intensity_action = analysis_menu.addAction("Analyze Edge Intensity")
-        intensity_action.triggered.connect(self.analyze_edge_intensity)
+            # Update visualization
+            self.update_visualization()
 
-        calculate_curvature_action = analysis_menu.addAction("Calculate Curvature")
-        calculate_curvature_action.triggered.connect(self.calculate_curvature)
+            # Update debug information
+            self.update_debug_info()
 
-        # View menu
-        view_menu = menubar.addMenu("View")
+            self.statusBar().showMessage("Analysis complete")
 
-        toggle_overlay_action = view_menu.addAction("Toggle Overlay")
-        toggle_overlay_action.triggered.connect(self.toggle_overlay)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Analysis failed: {e}")
+            self.statusBar().showMessage("Analysis failed")
 
-    def load_cell_stack(self):
-        file_name, _ = QFileDialog.getOpenFileName(
-            self, "Load Cell Stack", "",
-            "TIFF files (*.tif *.tiff)"
+    def update_visualization(self):
+        """Update all visualization panels."""
+        if self.edge_data is None:
+            return
+
+        # Update main visualization
+        self.visualization_panel.plot_results(
+            cell_data=self.cell_data,
+            fluor_data=self.fluor_data,
+            edge_data=self.edge_data,
+            curvature_data=self.curvature_data,
+            fluorescence_data=self.fluorescence_data,
+            params=self.params
         )
-        if file_name:
-            self.status_bar.showMessage(f"Loading cell stack: {file_name}")
-            if self.tiff_handler.load_cell_stack(file_name):
-                self.update_display()
-                self.toolbar.set_frame_range(self.tiff_handler.n_frames)
 
-    def load_piezo_stack(self):
-        file_name, _ = QFileDialog.getOpenFileName(
-            self, "Load PIEZO1 Stack", "",
-            "TIFF files (*.tif *.tiff)"
+    def update_debug_info(self):
+        """Update debug information display."""
+        if self.edge_data is None:
+            return
+
+        debug_info = []
+
+        # Edge detection debug info
+        edge_debug = self.edge_detector.debug_edge_detection(
+            self.cell_data,
+            self.edge_data
         )
-        if file_name:
-            self.status_bar.showMessage(f"Loading PIEZO1 stack: {file_name}")
-            if self.tiff_handler.load_piezo_stack(file_name):
-                self.update_display()
+        debug_info.append("Edge Detection:")
+        debug_info.extend(f"  {k}: {v}" for k, v in edge_debug.items())
 
-    def update_frame(self, frame_number):
-        """Update frame and all associated displays."""
-        if self.tiff_handler.set_frame(frame_number - 1):  # Convert to 0-based index
-            # Update display
-            self.update_display()
-
-            # # Re-run analyses for new frame if they were previously done
-            # if hasattr(self, 'intensity_analyzer'):
-            #     self.analyze_edge_intensity(reuse_settings=True)
-
-            #     # Re-run curvature if it was previously done
-            #     if hasattr(self, 'curvature_analyzer') and self.results_window is not None:
-            #         curvature_data = self.curvature_analyzer.get_curvature_data(self.tiff_handler.current_frame)
-            #         if curvature_data[0] is not None:
-            #             self.calculate_curvature()
-
-    def update_opacity(self, value):
-        self.overlay_handler.set_opacity(value)
-        self.update_display()
-
-    def update_zoom(self, value):
-        self.image_viewer.set_zoom(value)
-
-    def update_display(self):
-        """Update display with current frame data."""
-        # Update main display
-        cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
-        if cell_frame is not None and piezo_frame is not None:
-            # Get display options from results window
-            show_vectors = (self.results_window is not None and
-                          self.results_window.isVisible() and
-                          self.results_window.show_vectors)
-
-            show_smoothed = (self.results_window is not None and
-                           self.results_window.isVisible() and
-                           self.results_window.show_smoothed)
-
-            print(f"Update display - show_smoothed: {show_smoothed}")  # Debug
-
-            # Get edge image with appropriate contours
-            edge_image = self.edge_detector.get_edge_image(
-                frame_index=self.tiff_handler.current_frame,
-                show_smoothed=show_smoothed
+        # Curvature analysis debug info
+        if self.curvature_data is not None:
+            curv_debug = self.curvature_analyzer.debug_curvature_analysis(
+                self.curvature_data
             )
+            debug_info.append("\nCurvature Analysis:")
+            debug_info.extend(f"  {k}: {v}" for k, v in curv_debug.items())
 
-            if show_vectors:
-                # Get measurement points and normals
-                _, points, normals = self.intensity_analyzer.get_frame_data(
-                    self.tiff_handler.current_frame
-                )
-                sampling_depth = self.intensity_analyzer.sampling_depth
-                vector_width = self.intensity_analyzer.vector_width
-            else:
-                points = None
-                normals = None
-                sampling_depth = None
-                vector_width = None
-
-            # Create overlay with all components
-            pixmap = self.overlay_handler.create_overlay(
-                cell_frame,
-                piezo_frame,
-                edge_image,
-                show_vectors,
-                points,
-                normals,
-                sampling_depth,
-                vector_width,
-                show_smoothed
+        # Fluorescence analysis debug info
+        if self.fluorescence_data is not None:
+            fluor_debug = self.fluorescence_analyzer.debug_fluorescence_analysis(
+                self.fluorescence_data
             )
-            self.image_viewer.update_display(pixmap)
+            debug_info.append("\nFluorescence Analysis:")
+            debug_info.extend(f"  {k}: {v}" for k, v in fluor_debug.items())
 
-        # Update results if window exists and is visible
-        if self.results_window is not None and self.results_window.isVisible():
-            intensities, points, _ = self.intensity_analyzer.get_frame_data(
-                self.tiff_handler.current_frame
-            )
-            if intensities is not None and points is not None:
-                self.results_window.update_results(
-                    intensities,
-                    points,
-                    self.tiff_handler.current_frame
-                )
+        # Update debug text
+        self.debug_text.setText("\n".join(debug_info))
 
-    def update_status_bar(self, x, y):
-        cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
-        if cell_frame is not None and piezo_frame is not None:
-            try:
-                cell_val = cell_frame[y, x]
-                piezo_val = piezo_frame[y, x]
-                self.status_bar.showMessage(
-                    f"Position: ({x}, {y}) | Cell: {cell_val} | PIEZO1: {piezo_val}"
-                )
-            except IndexError:
-                pass
+    def update_analysis(self):
+        """Update analysis when parameters change."""
+        # Get updated parameters from panel
+        self.params = self.analysis_panel.get_parameters()
 
-    def detect_edges(self):
-        if self.tiff_handler.cell_stack is not None:
-            self.status_bar.showMessage("Detecting cell edges in all frames...")
-            success = self.edge_detector.detect_edges_stack(self.tiff_handler.cell_stack)
-            if success:
-                self.status_bar.showMessage("Edge detection complete for all frames")
-            else:
-                self.status_bar.showMessage("Error during edge detection")
-            self.update_display()
+        # Update analyzers with new parameters
+        self.edge_detector.params = self.params
+        self.curvature_analyzer.params = self.params
+        self.fluorescence_analyzer.params = self.params
 
-    def analyze_edge_intensity(self, reuse_settings=False):
-        """Run edge intensity analysis for current frame."""
-        if self.edge_detector.contours:
-            if not reuse_settings:
-                # Show settings dialog only if not reusing settings
-                dialog = IntensityAnalysisDialog(self)
-                if not dialog.exec():
-                    return
-
-                settings = dialog.get_settings()
-                print("Analysis settings:", settings)
-
-                # Set parameters
-                self.intensity_analyzer.set_parameters(
-                    settings['sampling_depth'],
-                    settings['vector_width'],
-                    settings['sampling_interval'],
-                    settings['measure_type']
-                )
-
-            # Get current frame data
-            current_frame = self.tiff_handler.current_frame
-            cell_frame, piezo_frame = self.tiff_handler.get_current_frame()
-            contour = self.edge_detector.get_contour(current_frame)
-
-            if piezo_frame is not None and contour is not None:
-                # Run analysis
-                self.status_bar.showMessage("Analyzing edge intensity...")
-                success = self.intensity_analyzer.analyze_frame(
-                    piezo_frame,
-                    contour,
-                    current_frame
-                )
-
-                if success:
-                    # Create/show results window
-                    if self.results_window is None:
-                        self.results_window = ResultsWindow(self)
-
-                    # Get results data
-                    intensities, points, _ = self.intensity_analyzer.get_frame_data(
-                        current_frame
-                    )
-
-                    # Update results without curvature data
-                    self.results_window.update_results(
-                        intensities,
-                        points,
-                        current_frame
-                    )
-
-                    self.results_window.show()
-                    self.status_bar.showMessage("Edge intensity analysis complete")
-                else:
-                    self.status_bar.showMessage("Error in intensity analysis")
-        else:
-            self.status_bar.showMessage("Please detect cell edges first")
-
-    def calculate_curvature(self):
-        """Calculate and display membrane curvature for current frame."""
-        if self.edge_detector.contours is not None:
-            self.status_bar.showMessage("Calculating membrane curvature...")
-
-            # Get current frame
-            current_frame = self.tiff_handler.current_frame
-
-            # Get current contour
-            contour = self.edge_detector.get_contour(current_frame)
-            print(f"Retrieved contour for frame {current_frame}")
-
-            # Get current measurement points if available
-            _, measurement_points, _ = self.intensity_analyzer.get_frame_data(
-                current_frame
-            )
-
-            if contour is not None:
-                print(f"Contour ready for processing: shape={contour.shape}")
-                # Calculate curvature using measurement points
-                curvature, smoothed_contour = self.curvature_analyzer.calculate_curvature(
-                    contour,
-                    current_frame,
-                    measurement_points=measurement_points
-                )
-
-                if curvature is not None:
-                    print("Curvature calculation successful")
-                    # Add curvature visualization to the results window
-                    if self.results_window is None:
-                        self.results_window = ResultsWindow(self)
-
-                    # Get current intensity data
-                    intensities, points, _ = self.intensity_analyzer.get_frame_data(
-                        current_frame
-                    )
-
-                    # Update results with curvature data
-                    self.results_window.update_results(
-                        intensities,
-                        points,
-                        current_frame,
-                        curvature=curvature,
-                        smoothed_contour=smoothed_contour
-                    )
-
-                    self.results_window.show()
-                    self.status_bar.showMessage("Curvature calculation complete")
-                else:
-                    print("Curvature calculation failed")
-                    self.status_bar.showMessage("Error calculating curvature")
-            else:
-                print("No valid contour found")
-                self.status_bar.showMessage("No valid contour found")
-        else:
-            print("No contours available")
-            self.status_bar.showMessage("No contours available")
-
-    def save_analysis(self):
-        # Add save functionality here
-        pass
-
-    def toggle_overlay(self):
-        # Add overlay toggle functionality here
-        pass
+        # Re-run analysis if we have data
+        if self.cell_data is not None:
+            self.run_analysis()

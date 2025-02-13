@@ -1,6 +1,16 @@
-PyQt6>=6.4
-numpy>=1.21
-tifffile>=2023.3.15
-opencv-python>=4.7
-scikit-image>=0.19
-matplotlib>=3.5
+# requirements.txt
+
+# Core dependencies
+numpy>=1.21.0
+scipy>=1.7.0
+matplotlib>=3.4.0
+PyQt6>=6.2.0
+
+# Image processing
+opencv-python>=4.5.0
+scikit-image>=0.18.0
+tifffile>=2021.8.30
+
+# Testing (optional)
+pytest>=6.2.0
+pytest-qt>=4.0.0

@@ -1,12 +1,17 @@
 # src/gui/__init__.py
+
 """
 GUI components for the PIEZO1 Analysis Tool.
-Contains the main window, image viewer, and toolbar implementations.
 """
 
 from .main_window import MainWindow
-from .image_view import ImageViewer
-from .toolbar import ToolBar
+from .analysis_panel import AnalysisPanel
+from .visualization_panel import VisualizationPanel
+from .file_panel import FilePanel
 
-__all__ = ['MainWindow', 'ImageViewer', 'ToolBar']
-
+__all__ = [
+    'MainWindow',
+    'AnalysisPanel',
+    'VisualizationPanel',
+    'FilePanel'
+]

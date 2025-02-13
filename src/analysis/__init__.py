@@ -1,9 +1,15 @@
 # src/analysis/__init__.py
+
 """
-Analysis modules for cell edge detection and curvature calculation.
+Analysis modules for the PIEZO1 Analysis Tool.
 """
 
 from .edge_detection import EdgeDetector
-from .curvature import CurvatureAnalyzer
+from .curvature_analyzer import CurvatureAnalyzer
+from .fluorescence_analyzer import FluorescenceAnalyzer
 
-__all__ = ['EdgeDetector', 'CurvatureAnalyzer']
+__all__ = [
+    'EdgeDetector',
+    'CurvatureAnalyzer',
+    'FluorescenceAnalyzer'
+]

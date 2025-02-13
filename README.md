@@ -1,135 +1,50 @@
 # PIEZO1 Cell Edge Analysis Tool
 
-A Python-based application for analyzing PIEZO1 protein distribution along cell membranes using TIRF microscopy data.
+A Python-based application for analyzing PIEZO1 protein distribution and membrane curvature using TIRF microscopy data.
 
 ## Overview
 
-This tool is designed to analyze the relationship between PIEZO1 protein distribution and cell membrane curvature using Total Internal Reflection Fluorescence (TIRF) microscopy data. It processes two types of TIFF stacks:
-1. Binary segmented images showing cell position
+This tool enables simultaneous analysis of membrane curvature and PIEZO1 protein distribution along cell edges using Total Internal Reflection Fluorescence (TIRF) microscopy data. It processes two types of TIFF files:
+1. Binary segmented images showing cell position (cell mask)
 2. Fluorescence recordings of PIEZO1 protein distribution
-
-The tool enables researchers to:
-- Overlay and visualize both data streams
-- Detect and analyze cell membrane edges
-- Measure PIEZO1 fluorescence intensity along the cell edge
-- Calculate and analyze membrane curvature
-- Correlate PIEZO1 distribution with membrane geometry
-
-## Scientific Background
-
-PIEZO1 is a mechanosensitive ion channel protein that plays a crucial role in cellular mechanotransduction. Understanding its distribution along cell membranes and its relationship to membrane curvature is essential for:
-- Mechanistic studies of cellular mechanosensing
-- Investigation of membrane protein organization
-- Understanding cellular responses to mechanical stimuli
 
 ## Features
 
-### Image Processing
-- Load and display TIFF stacks from TIRF microscopy
-- Overlay binary and fluorescence channels
-- Adjustable opacity for visualization
-- Frame-by-frame navigation
-- Zoom and pan capabilities
+### Core Analysis Capabilities
+- Automated cell edge detection and smoothing
+- Local membrane curvature calculation
+- Membrane-proximal fluorescence intensity measurement
+- Synchronized curvature and intensity analysis
+- Frame-by-frame analysis for time series data
 
-### Analysis Capabilities
-1. Edge Detection
-   - Automated cell edge detection
-   - Contour extraction and visualization
-   - Adjustable edge smoothing
-   - Frame-by-frame edge tracking
+### Analysis Parameters
+- Edge smoothing with adjustable sigma
+- Customizable sampling density along membrane
+- Adjustable segment length for curvature calculation
+- Vector depth and width for fluorescence sampling
+- Interior threshold filtering for fluorescence measurements
 
-2. Intensity Analysis
-   - Customizable sampling depth into the cell
-   - Adjustable sampling width
-   - Multiple intensity measurement options:
-     - Mean intensity
-     - Maximum intensity
-     - Minimum intensity
-   - Interior point validation
-   - Visual representation of sampling regions
+### Visualization Options
+- Combined curvature and fluorescence display
+- Intensity-curvature correlation plots
+- Intensity profile visualization
+- Adjustable visualization parameters:
+  - Line width
+  - Background opacity
+  - Rectangle opacity
+  - Cell edge visibility toggle
 
-3. Curvature Analysis
-   - Local curvature calculation
-   - Adjustable smoothing parameters
-   - Correlation with intensity measurements
-   - Interactive visualization
-
-4. Data Visualization
-   - Real-time intensity profiles
-   - Curvature profiles
-   - Edge position plotting with intensity/curvature coloring
-   - Intensity-curvature correlation plots
-   - Sampling vector visualization
-   - Frame-synchronized display
-
-## Technical Implementation
-
-### Software Architecture
-The application is built using Python with a modular structure:
-```
-piezo1_analysis/
-├── main.py
-├── requirements.txt
-├── src/
-    ├── gui/
-    │   ├── main_window.py
-    │   ├── image_view.py
-    │   ├── analysis_dialog.py
-    │   └── results_window.py
-    ├── image_processing/
-    │   ├── tiff_handler.py
-    │   └── overlay.py
-    └── analysis/
-        ├── edge_detection.py
-        ├── intensity_analyzer.py
-        └── curvature.py
-```
-
-### Key Dependencies
-- PyQt6: GUI framework
-- NumPy: Numerical computations
-- OpenCV: Image processing
-- scikit-image: Scientific image analysis
-- scipy: Scientific computing
-- matplotlib: Data visualization
-
-### Core Components
-
-#### Edge Detection
-- Uses contour detection algorithms
-- Implements noise reduction and filtering
-- Adjustable edge smoothing
-- Handles frame-by-frame tracking
-- Border artifact removal
-
-#### Intensity Analysis
-- Normal vector calculation for each edge point
-- Rectangular sampling regions:
-  - Customizable depth into cell
-  - Adjustable width for sampling
-  - Multiple measurement methods
-- Interior direction validation
-- Border region exclusion
-- Collision detection for sampling regions
-
-#### Curvature Analysis
-- Local curvature calculation
-- Adaptable smoothing parameters
-- Synchronized sampling points
-- Correlation analysis
-
-#### Visualization
-- Real-time overlay generation
-- Multi-plot result display
-- Interactive plot updates
-- Color-coded position maps
-- Vector visualization for sampling regions
+### Debug Features
+- Detailed edge detection statistics
+- Curvature measurement validation
+- Fluorescence sampling verification
+- Warning system for potential analysis issues
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/gddickinson/piezo1-analysis.git
+git clone https://github.com/yourusername/piezo1-analysis.git
 cd piezo1-analysis
 ```
 
@@ -144,35 +59,135 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Usage
+## Quick Start
 
-1. Start the application:
+1. Launch the application:
 ```bash
 python main.py
 ```
 
-2. Load data:
-   - Use "File → Load Cell Stack" to load binary segmented images
-   - Use "File → Load PIEZO1 Stack" to load fluorescence data
+2. Load example data:
+   - Navigate to example_data folder
+   - Load the cell mask TIFF file using "Load Cell Mask"
+   - Load the PIEZO1 fluorescence TIFF file using "Load Fluorescence"
 
-3. Analysis workflow:
-   1. Detect cell edges using "Analysis → Detect Cell Edges"
-   2. Adjust edge smoothing if needed using the slider
-   3. Configure and run intensity analysis using "Analysis → Analyze Edge Intensity"
-   4. Calculate curvature using "Analysis → Calculate Curvature"
-   5. Adjust visualization using the toolbar controls
-   6. Toggle sampling vectors and smoothed line in the results window
+3. Adjust analysis parameters as needed:
+   - Common Parameters:
+     - Number of Samples (20-150)
+     - Edge Smoothing σ (0-5.0)
+   - Curvature Analysis:
+     - Segment Length (5-20 pixels)
+   - Fluorescence Analysis:
+     - Vector Width (1-20 pixels)
+     - Vector Depth (5-50 pixels)
+     - Interior Threshold (0-100%)
+
+4. Use visualization controls to optimize display:
+   - Line Width
+   - Background Opacity
+   - Rectangle Opacity
+   - Toggle Cell Edge visibility
+
+## Example Data
+
+The `example_data` folder contains test files for verifying the analysis pipeline:
+
+- `test_cell_mask.tif`: Binary cell mask image
+- `test_piezo1.tif`: Corresponding PIEZO1 fluorescence image
+
+These files demonstrate the expected format and can be used to test the analysis workflow.
 
 ## Data Requirements
 
-- TIFF stacks should be properly aligned
-- Binary images should clearly define cell boundaries
-- Fluorescence images should have good signal-to-noise ratio
-- Both stacks must have the same dimensions and number of frames
+### Input Files
+- TIFF format (single image or stack)
+- Both mask and fluorescence images must have the same dimensions
+- Cell mask should be binary (0 and 255 or 0 and 1)
+- Fluorescence image should be grayscale
+
+### Image Quality
+- Clear cell boundaries in mask image
+- Good signal-to-noise ratio in fluorescence image
+- Minimal motion artifacts
+- Proper focus throughout imaging
+
+## Technical Details
+
+### Cell Edge Detection
+- Contour detection using OpenCV
+- Morphological cleaning of binary mask
+- Smoothing options for noise reduction
+- Border artifact handling
+
+### Curvature Analysis
+- Local circle fitting algorithm
+- Adjustable segment length for local fitting
+- Validation of fitting quality
+- Reference curvature markers
+
+### Fluorescence Analysis
+- Normal vector calculation at each point
+- Rectangular sampling regions
+- Interior overlap verification
+- Background subtraction option
+
+## Project Structure
+piezo1_analysis/
+├── README.md
+├── curvature_simulation
+│   ├── bleb-analysis-readme.md
+│   └── simulate-bleb-curvature.py
+├── example_data
+│   ├── test_cell_mask.tif
+│   └── test_piezo1.tif
+├── main.py
+├── project-structure.py
+├── requirements.txt
+├── src
+│   ├── __init__.py
+│   ├── analysis
+│   │   ├── __init__.py
+│   │   ├── curvature_analyzer.py
+│   │   ├── edge_detection.py
+│   │   └── fluorescence_analyzer.py
+│   ├── gui
+│   │   ├── __init__.py
+│   │   ├── analysis_panel.py
+│   │   ├── file_panel.py
+│   │   ├── main_window.py
+│   │   └── visualization_panel.py
+│   └── utils
+│       ├── __init__.py
+│       ├── data_structures.py
+│       └── image_processing.py
+└── tests
+    └── __init__.py
+    ├── test_edge_detection.py
+    ├── test_curvature_analysis.py
+    └── test_fluorescence_analysis.py
+
+## Troubleshooting
+
+Common issues and solutions:
+
+1. No edge detected:
+   - Check if cell mask is binary
+   - Ensure cell is not touching image borders
+   - Try adjusting minimum object size
+
+2. Missing fluorescence measurements:
+   - Check interior threshold setting
+   - Verify fluorescence image alignment
+   - Ensure proper image bit depth
+
+3. Inconsistent curvature:
+   - Adjust smoothing parameter
+   - Increase segment length
+   - Check for edge artifacts
 
 ## Contributing
 
-Contributions welcome! Please read the contributing guidelines and submit pull requests for:
+Contributions are welcome! Please read the contributing guidelines and submit pull requests for:
 - Bug fixes
 - New features
 - Documentation improvements
@@ -182,6 +197,12 @@ Contributions welcome! Please read the contributing guidelines and submit pull r
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Acknowledgments
+
+Developed for the analysis of PIEZO1 protein distribution in relation to membrane curvature in TIRF microscopy data.
+
 ## Contact
 
-george.dickinson@gmail.com
+For questions and support, please contact:
+- Email: george.dickinson@gmail.com
+- Issues: Submit via GitHub issue tracker
