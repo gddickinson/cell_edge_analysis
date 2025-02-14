@@ -86,6 +86,9 @@ class CurvatureAnalyzer:
         center = segment.mean(axis=0)
         centered = segment - center
 
+        # Scale coordinates to nanometers
+        centered = centered * self.params.pixel_size
+
         # Apply algebraic circle fitting
         x = centered[:, 0]
         y = centered[:, 1]
@@ -123,11 +126,11 @@ class CurvatureAnalyzer:
             if radicand <= 0:
                 return 0
 
-            r = np.sqrt(radicand)
+            r = np.sqrt(radicand)  # Radius is now in nanometers
 
             # Verify the fit is reasonable
-            if (not np.isfinite(r) or
-                r < self.params.segment_length/2):
+            min_radius = self.params.segment_length * self.params.pixel_size / 2
+            if (not np.isfinite(r) or r < min_radius):
                 return 0
 
             # Calculate outward-pointing normal
@@ -141,16 +144,14 @@ class CurvatureAnalyzer:
             normal = normal / normal_norm
 
             # Determine if normal points outward
-            center_point = np.array([a, b]) + center
+            center_point = np.array([a, b]) / self.params.pixel_size + center
             to_center = center_point - segment.mean(axis=0)
             to_center_norm = np.linalg.norm(to_center)
 
             if to_center_norm > 0:
                 # Curvature is positive when bulging inward (cytosol)
                 sign = -np.sign(np.dot(to_center/to_center_norm, normal))
-                curvature = (1/r) * sign
-                # Convert to nm^-1 units
-                curvature = curvature / self.params.radius_scale
+                curvature = (1/r) * sign  # Curvature is now in nm^-1
             else:
                 curvature = 0
 

@@ -12,7 +12,7 @@ class ImageData:
     filename: str
     is_stack: bool = False
     current_frame: int = 0
-    
+
     @property
     def shape(self):
         return self.data.shape
@@ -23,7 +23,7 @@ class EdgeData:
     contour: np.ndarray
     edge_image: np.ndarray
     smoothed_contour: Optional[np.ndarray] = None
-    
+
     def smooth_contour(self, sigma: float) -> np.ndarray:
         """Apply Gaussian smoothing to contour."""
         from scipy.ndimage import gaussian_filter1d
@@ -50,11 +50,11 @@ class FluorescenceData:
     intensity_values: np.ndarray
     sampling_regions: List[np.ndarray]
     interior_overlaps: List[float]
-    
+
     @property
     def mean_intensities(self):
         return np.array([d['mean'] for d in self.sampling_points])
-    
+
     @property
     def sampling_coordinates(self):
         return np.array([d['center'] for d in self.sampling_points])
@@ -66,20 +66,27 @@ class AnalysisParameters:
     n_samples: int = 75
     smoothing_sigma: float = 1.0
     min_size: int = 100
-    
+
+    # Unit conversion
+    pixel_size: float = 100.0  # Size of one pixel in nanometers
+
     # Curvature specific
     segment_length: int = 9
     membrane_thickness: float = 4  # nm
-    radius_scale: float = 100  # scale factor nm
-    
+
     # Fluorescence specific
     vector_width: int = 5
     vector_depth: int = 20
     edge_segment: int = 10
     interior_threshold: float = 0
-    
+
     # Visualization
     line_width: int = 3
     background_alpha: float = 0.5
     rectangle_alpha: float = 0.3
     show_edge: bool = True
+
+    @property
+    def radius_scale(self) -> float:
+        """Convert pixel measurements to nanometers."""
+        return self.pixel_size

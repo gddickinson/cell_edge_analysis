@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# src/gui/main_window.py
 
 import sys
 import numpy as np
+import cv2
+from typing import List, Optional, Dict, Tuple
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
     QLabel, QPushButton, QFileDialog, QMessageBox
@@ -20,6 +21,7 @@ from ..analysis.fluorescence_analyzer import FluorescenceAnalyzer
 from .analysis_panel import AnalysisPanel
 from .visualization_panel import VisualizationPanel
 from .file_panel import FilePanel
+from .coordinated_analysis import CoordinatedAnalysis
 
 class MainWindow(QMainWindow):
     """Main window for the PIEZO1 analysis application."""
@@ -113,17 +115,24 @@ class MainWindow(QMainWindow):
         """Handle loaded cell mask."""
         self.cell_data = image_data
         self.statusBar().showMessage(f"Loaded cell mask: {image_data.filename}")
-        self.run_analysis()
+
+        # Only run analysis if both files are loaded
+        if self.fluor_data is not None:
+            self.run_analysis()
 
     def on_fluorescence_loaded(self, image_data: ImageData):
         """Handle loaded fluorescence image."""
         self.fluor_data = image_data
         self.statusBar().showMessage(f"Loaded fluorescence: {image_data.filename}")
-        self.run_analysis()
+
+        # Only run analysis if both files are loaded
+        if self.cell_data is not None:
+            self.run_analysis()
 
     def run_analysis(self):
         """Run the complete analysis pipeline."""
-        if self.cell_data is None:
+        if self.cell_data is None or self.fluor_data is None:
+            self.statusBar().showMessage("Load both cell mask and fluorescence images to begin analysis")
             return
 
         try:
@@ -132,30 +141,88 @@ class MainWindow(QMainWindow):
             if self.edge_data is None:
                 raise ValueError("Edge detection failed")
 
-            # If we have fluorescence data, get valid sampling points first
+            # Create coordinator for sampling points
+            coordinator = CoordinatedAnalysis(self.edge_data, self.params)
+            sample_indices = coordinator.generate_sampling_points()
+
+            # Lists to store valid measurements
+            valid_indices = []
+            valid_points = []
+            curvature_segments = []
+            curvatures = []
+            fluorescence_data = []
+
+            # Process each sample point
+            for idx in sample_indices:
+                if self.fluor_data is not None:
+                    # Check point validity for both analyses
+                    is_valid, point_data = coordinator.check_point_validity(
+                        idx,
+                        self.fluor_data.data,
+                        self.cell_data.data
+                    )
+
+                    if not is_valid:
+                        continue
+
+                    # Calculate curvature for valid point
+                    segment = coordinator.contour[point_data['segment_indices']]
+                    curvature = self.curvature_analyzer._fit_circle_to_segment(segment)
+
+                    if curvature == 0:  # Skip if curvature calculation failed
+                        continue
+
+                    # Sample fluorescence
+                    rect_mask = np.zeros_like(self.fluor_data.data, dtype=np.uint8)
+                    cv2.fillPoly(rect_mask, [point_data['rect_coords']], 1)
+                    mask = rect_mask.astype(bool)
+                    fluor_values = self.fluor_data.data[mask]
+
+                    if len(fluor_values) == 0:
+                        continue
+
+                    # Store valid measurements
+                    valid_indices.append(idx)
+                    valid_points.append(point_data['center'])
+                    curvature_segments.append(point_data['segment_indices'])
+                    curvatures.append(curvature)
+
+                    intensity_data = {
+                        'mean': np.mean(fluor_values),
+                        'min': np.min(fluor_values),
+                        'max': np.max(fluor_values),
+                        'std': np.std(fluor_values),
+                        'rect_coords': point_data['rect_coords'],
+                        'raw_values': fluor_values,
+                        'normal': point_data['normal'],
+                        'center': point_data['center'],
+                        'interior_overlap': point_data['interior_overlap']
+                    }
+                    fluorescence_data.append(intensity_data)
+
+            # Create data objects for valid measurements
+            valid_indices = np.array(valid_indices)
+            valid_points = np.array(valid_points)
+
+            if len(valid_indices) == 0:
+                raise ValueError("No valid measurement points found")
+
+            # Create curvature data
+            self.curvature_data = CurvatureData(
+                points=valid_points,
+                curvatures=np.array(curvatures),
+                segment_indices=curvature_segments,
+                ref_curvatures=self.curvature_analyzer.ref_curvatures,
+                radius_scale=self.params.radius_scale
+            )
+
+            # Create fluorescence data if available
             if self.fluor_data is not None:
-                # Get initial fluorescence measurements
-                self.fluorescence_data = self.fluorescence_analyzer.calculate_intensities(
-                    self.edge_data,
-                    self.fluor_data,
-                    self.cell_data
-                )
-
-                if self.fluorescence_data is None:
-                    raise ValueError("Fluorescence analysis failed")
-
-                # Get valid indices from fluorescence analysis
-                valid_indices = self.fluorescence_analyzer.get_valid_indices()
-
-                # Calculate curvature using only these valid points
-                self.curvature_data = self.curvature_analyzer.calculate_curvature(
-                    self.edge_data,
-                    valid_indices
-                )
-            else:
-                # If no fluorescence data, just do curvature analysis
-                self.curvature_data = self.curvature_analyzer.calculate_curvature(
-                    self.edge_data
+                self.fluorescence_data = FluorescenceData(
+                    sampling_points=fluorescence_data,
+                    intensity_values=np.array([d['mean'] for d in fluorescence_data]),
+                    sampling_regions=[d['rect_coords'] for d in fluorescence_data],
+                    interior_overlaps=[d['interior_overlap'] for d in fluorescence_data]
                 )
 
             # Update visualization
@@ -164,7 +231,9 @@ class MainWindow(QMainWindow):
             # Update debug information
             self.update_debug_info()
 
-            self.statusBar().showMessage("Analysis complete")
+            self.statusBar().showMessage(
+                f"Analysis complete - {len(valid_indices)} valid measurement points"
+            )
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Analysis failed: {e}")
