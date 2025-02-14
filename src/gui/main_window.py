@@ -55,10 +55,21 @@ class MainWindow(QMainWindow):
         # Create horizontal layout for file panel and main content
         h_layout = QHBoxLayout()
 
-        # Create and add file panel
-        self.file_panel = FilePanel()
+        # Create and add file panel with analyzers and parameters
+        self.file_panel = FilePanel(
+            edge_detector=self.edge_detector,
+            curvature_analyzer=self.curvature_analyzer,
+            fluorescence_analyzer=self.fluorescence_analyzer,
+            params=self.params,
+            parent=self
+        )
+
+        # Connect file panel signals
         self.file_panel.cell_mask_loaded.connect(self.on_cell_mask_loaded)
         self.file_panel.fluorescence_loaded.connect(self.on_fluorescence_loaded)
+        self.file_panel.files_ready.connect(self.run_analysis)
+
+
         h_layout.addWidget(self.file_panel)
 
         # Create vertical layout for main content
@@ -297,6 +308,9 @@ class MainWindow(QMainWindow):
         self.edge_detector.params = self.params
         self.curvature_analyzer.params = self.params
         self.fluorescence_analyzer.params = self.params
+
+        # Update file panel parameters
+        self.file_panel.params = self.params
 
         # Re-run analysis if we have data
         if self.cell_data is not None:
