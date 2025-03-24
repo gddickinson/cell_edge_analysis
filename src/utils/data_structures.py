@@ -73,6 +73,9 @@ class AnalysisParameters:
     # Curvature specific
     segment_length: int = 9
     membrane_thickness: float = 4  # nm
+    curvature_method: str = "sample_points"  # "sample_points", "moving_window", "spline_fitting" or "geometric"
+    window_step: int = 1  # Step size for moving window (in pixels)
+    spline_smoothing: float = 1.0  # Smoothing factor for spline fitting
 
     # Fluorescence specific
     vector_width: int = 5
@@ -85,6 +88,7 @@ class AnalysisParameters:
     background_alpha: float = 0.5
     rectangle_alpha: float = 0.3
     show_edge: bool = True
+    show_fitted_circles: bool = False
 
     @property
     def radius_scale(self) -> float:

@@ -24,11 +24,14 @@ class FluorescenceAnalyzer:
     ) -> Optional[FluorescenceData]:
         """Calculate fluorescence intensities along the membrane."""
         try:
+            # IMPORTANT: Use the same contour as curvature analysis
+            contour = edge_data.smoothed_contour if edge_data.smoothed_contour is not None else edge_data.contour
+
             # Use either provided valid indices or generate new ones
             if valid_indices is not None:
                 sample_indices = valid_indices
             else:
-                n_points = len(edge_data.contour)
+                n_points = len(contour)  # Use length of the chosen contour
                 n_samples = min(self.params.n_samples, n_points)
                 sample_indices = np.linspace(0, n_points-1, n_samples, dtype=int)
 
@@ -44,13 +47,13 @@ class FluorescenceAnalyzer:
 
             for i, idx in enumerate(sample_indices):
                 try:
-                    # Get segment of points for smoothing
+                    # Get segment of points for normal calculation
                     half_segment = self.params.edge_segment // 2
                     segment_indices = np.arange(idx - half_segment,
-                                             idx + half_segment + 1) % len(edge_data.contour)
-                    segment = edge_data.contour[segment_indices].astype(float)
+                                             idx + half_segment + 1) % len(contour)
+                    segment = contour[segment_indices].astype(float)
 
-                    # Get current point and calculate normal
+                    # Calculate intensity for this segment
                     intensity_data = self._calculate_single_intensity(
                         segment=segment,
                         fluor_image=fluor_data.data,

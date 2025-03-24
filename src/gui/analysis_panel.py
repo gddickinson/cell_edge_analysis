@@ -3,7 +3,8 @@
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
-    QLabel, QSlider, QPushButton, QDoubleSpinBox
+    QLabel, QSlider, QPushButton, QDoubleSpinBox,
+    QComboBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from ..utils.data_structures import AnalysisParameters
@@ -54,8 +55,8 @@ class AnalysisPanel(QWidget):
         # Number of samples slider
         self.samples_label = QLabel(f"Number of Samples: {self.params.n_samples}")
         self.samples_slider = QSlider(Qt.Orientation.Horizontal)
-        self.samples_slider.setMinimum(20)
-        self.samples_slider.setMaximum(150)
+        self.samples_slider.setMinimum(10)
+        self.samples_slider.setMaximum(3000)
         self.samples_slider.setValue(self.params.n_samples)
         self.samples_slider.valueChanged.connect(self._on_samples_changed)
         layout.addWidget(self.samples_label)
@@ -65,7 +66,7 @@ class AnalysisPanel(QWidget):
         self.smoothing_label = QLabel(f"Edge Smoothing σ: {self.params.smoothing_sigma:.1f}")
         self.smoothing_slider = QSlider(Qt.Orientation.Horizontal)
         self.smoothing_slider.setMinimum(0)
-        self.smoothing_slider.setMaximum(50)
+        self.smoothing_slider.setMaximum(500)
         self.smoothing_slider.setValue(int(self.params.smoothing_sigma * 10))
         self.smoothing_slider.valueChanged.connect(self._on_smoothing_changed)
         layout.addWidget(self.smoothing_label)
@@ -84,15 +85,65 @@ class AnalysisPanel(QWidget):
         group = QGroupBox("Curvature Analysis")
         layout = QVBoxLayout(group)
 
+        # Method selection
+        method_layout = QHBoxLayout()
+        method_layout.addWidget(QLabel("Method:"))
+        self.method_combo = QComboBox()
+        self.method_combo.addItem("Sample Points")
+        self.method_combo.addItem("Moving Window")
+        self.method_combo.addItem("Spline Fitting")
+        self.method_combo.addItem("Geometric Classification")  # Jinghao's method
+
+
+        # Set current selection based on parameter
+        if self.params.curvature_method == "sample_points":
+            current_index = 0
+        elif self.params.curvature_method == "moving_window":
+            current_index = 1
+        elif self.params.curvature_method == "spline_fitting":
+            current_index = 2
+        elif self.params.curvature_method == "geometric":
+            current_index = 3
+        else:
+            current_index = 0
+
+        self.method_combo.setCurrentIndex(current_index)
+        self.method_combo.currentIndexChanged.connect(self._on_method_changed)
+        method_layout.addWidget(self.method_combo)
+        layout.addLayout(method_layout)
+
         # Segment length slider
         self.segment_label = QLabel(f"Segment Length: {self.params.segment_length}")
         self.segment_slider = QSlider(Qt.Orientation.Horizontal)
         self.segment_slider.setMinimum(5)
-        self.segment_slider.setMaximum(20)
+        self.segment_slider.setMaximum(500)
         self.segment_slider.setValue(self.params.segment_length)
         self.segment_slider.valueChanged.connect(self._on_segment_changed)
         layout.addWidget(self.segment_label)
         layout.addWidget(self.segment_slider)
+
+        # Window step slider (for moving window only)
+        self.window_step_label = QLabel(f"Window Step: {self.params.window_step}")
+        self.window_step_slider = QSlider(Qt.Orientation.Horizontal)
+        self.window_step_slider.setMinimum(1)
+        self.window_step_slider.setMaximum(10)
+        self.window_step_slider.setValue(self.params.window_step)
+        self.window_step_slider.valueChanged.connect(self._on_window_step_changed)
+        layout.addWidget(self.window_step_label)
+        layout.addWidget(self.window_step_slider)
+
+        # Spline smoothing slider (for spline fitting only)
+        self.spline_smoothing_label = QLabel(f"Spline Smoothing: {self.params.spline_smoothing:.1f}")
+        self.spline_smoothing_slider = QSlider(Qt.Orientation.Horizontal)
+        self.spline_smoothing_slider.setMinimum(0)
+        self.spline_smoothing_slider.setMaximum(100)
+        self.spline_smoothing_slider.setValue(int(self.params.spline_smoothing * 10))
+        self.spline_smoothing_slider.valueChanged.connect(self._on_spline_smoothing_changed)
+        layout.addWidget(self.spline_smoothing_label)
+        layout.addWidget(self.spline_smoothing_slider)
+
+        # Show/hide method-specific controls
+        self._update_curvature_controls_visibility()
 
         return group
 
@@ -105,7 +156,7 @@ class AnalysisPanel(QWidget):
         self.width_label = QLabel(f"Vector Width: {self.params.vector_width} px")
         self.width_slider = QSlider(Qt.Orientation.Horizontal)
         self.width_slider.setMinimum(1)
-        self.width_slider.setMaximum(20)
+        self.width_slider.setMaximum(100)
         self.width_slider.setValue(self.params.vector_width)
         self.width_slider.valueChanged.connect(self._on_width_changed)
         layout.addWidget(self.width_label)
@@ -115,7 +166,7 @@ class AnalysisPanel(QWidget):
         self.depth_label = QLabel(f"Vector Depth: {self.params.vector_depth} px")
         self.depth_slider = QSlider(Qt.Orientation.Horizontal)
         self.depth_slider.setMinimum(5)
-        self.depth_slider.setMaximum(50)
+        self.depth_slider.setMaximum(200)
         self.depth_slider.setValue(self.params.vector_depth)
         self.depth_slider.valueChanged.connect(self._on_depth_changed)
         layout.addWidget(self.depth_label)
@@ -175,6 +226,13 @@ class AnalysisPanel(QWidget):
         self.show_edge_button.clicked.connect(self._on_show_edge_toggled)
         layout.addWidget(self.show_edge_button)
 
+        # Show fitted circles toggle
+        self.show_circles_button = QPushButton("Show Fitted Circles")
+        self.show_circles_button.setCheckable(True)
+        self.show_circles_button.setChecked(self.params.show_fitted_circles)
+        self.show_circles_button.clicked.connect(self._on_show_circles_toggled)
+        layout.addWidget(self.show_circles_button)
+
         return group
 
     # Parameter update handlers
@@ -191,6 +249,7 @@ class AnalysisPanel(QWidget):
     def _on_segment_changed(self, value):
         self.params.segment_length = value
         self.segment_label.setText(f"Segment Length: {value}")
+        # Make sure this triggers recalculation
         self.parameters_changed.emit()
 
     def _on_width_changed(self, value):
@@ -230,3 +289,50 @@ class AnalysisPanel(QWidget):
     def get_parameters(self) -> AnalysisParameters:
         """Get current parameter values."""
         return self.params
+
+    def _on_show_circles_toggled(self, checked):
+        self.params.show_fitted_circles = checked
+        self.parameters_changed.emit()
+
+    def _on_method_changed(self, index):
+        """Update curvature method parameter."""
+        if index == 0:
+            self.params.curvature_method = "sample_points"
+        elif index == 1:
+            self.params.curvature_method = "moving_window"
+        elif index == 2:
+            self.params.curvature_method = "spline_fitting"
+        elif index == 3:
+            self.params.curvature_method = "geometric"
+        else:
+            self.params.curvature_method = "sample_points"
+
+        # Update control visibility
+        self._update_curvature_controls_visibility()
+
+        self.parameters_changed.emit()
+
+    def _on_window_step_changed(self, value):
+        """Update window step parameter."""
+        self.params.window_step = value
+        self.window_step_label.setText(f"Window Step: {value}")
+        self.parameters_changed.emit()
+
+    def _on_spline_smoothing_changed(self, value):
+        """Update spline smoothing parameter."""
+        self.params.spline_smoothing = value / 10.0
+        self.spline_smoothing_label.setText(f"Spline Smoothing: {self.params.spline_smoothing:.1f}")
+        self.parameters_changed.emit()
+
+    def _update_curvature_controls_visibility(self):
+        """Show/hide method-specific controls based on selected method."""
+        is_moving_window = self.params.curvature_method == "moving_window"
+        is_spline_fitting = self.params.curvature_method == "spline_fitting"
+
+        # Moving window specific controls
+        self.window_step_label.setVisible(is_moving_window)
+        self.window_step_slider.setVisible(is_moving_window)
+
+        # Spline fitting specific controls
+        self.spline_smoothing_label.setVisible(is_spline_fitting)
+        self.spline_smoothing_slider.setVisible(is_spline_fitting)
