@@ -68,7 +68,7 @@ def multi_scale_consistency(contour, min_segment=5, max_segment=25, step=2):
                         scale_correlation[i, j] = corr if not np.isnan(corr) else 0.0
                     else:
                         scale_correlation[i, j] = 0.0
-                except:
+                except (ValueError, RuntimeWarning, FloatingPointError):
                     # If correlation fails, default to zero
                     scale_correlation[i, j] = 0.0
 
@@ -190,7 +190,7 @@ def calculate_curvature(points, segment_length):
                     curvature = abs(curvature)
                 else:
                     curvature = -abs(curvature)
-            except:
+            except (ValueError, ZeroDivisionError, np.linalg.LinAlgError):
                 # Any linear algebra error or division by zero results in zero curvature
                 curvature = 0
 

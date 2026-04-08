@@ -521,7 +521,7 @@ if __name__ == "__main__":
                                 # Try different formats if one fails
                                 try:
                                     anim.save(os.path.join(ts_output_dir, 'membrane_dynamics.mp4'))
-                                except:
+                                except (RuntimeError, ValueError, OSError):
                                     try:
                                         anim.save(os.path.join(ts_output_dir, 'membrane_dynamics.gif'),
                                                  writer='pillow', fps=5)
@@ -548,7 +548,7 @@ if __name__ == "__main__":
                         # Clean up
                         try:
                             os.remove(temp_path)
-                        except:
+                        except OSError:
                             pass
                 else:
                     # Single frame analysis

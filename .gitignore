@@ -6,3 +6,6 @@ src/.DS_Store
 .DS_Store
 src/.DS_Store
 src/gui/__pycache__/main_window.cpython-311.pyc
+/old_version/src/analysis/__pycache__
+/old_version/src/analysis/__pycache__
+/old_version/src/utils/__pycache__
