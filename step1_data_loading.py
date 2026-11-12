@@ -37,7 +37,7 @@ def parse_arguments():
     parser.add_argument('--normalize-frames', type=lambda x: x.lower() == 'true',
                         help='Normalize frames (true/false)')
     parser.add_argument('--normalization-scale', type=float,
-                        help='Scaling factor after normalization (default: 1.0)')
+                        help='Scaling factor after normalization (default: 100.0)')
     parser.add_argument('--subtract-background', type=lambda x: x.lower() == 'true',
                         help='Subtract background before normalization (true/false)')
     parser.add_argument('--background-percentile', type=float,
