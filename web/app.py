@@ -59,7 +59,7 @@ def index():
 
 @app.get("/api/info")
 def info():
-    """Project summary, the pipeline steps and the pipeline's default parameters (run_all_steps.PIPELINE_CONFIG)."""
+    """Project summary, the pipeline steps and the pipeline's default parameters (pipeline_defaults.DEFAULTS)."""
     return {
         "title": "Cell Edge Analysis",
         "repo": "cell_edge_analysis",
@@ -72,13 +72,9 @@ def info():
         "demo": {"image": "static/demo/demo_piezo1.tif", "mask": "static/demo/demo_Mask.tif",
                  "note": "SYNTHETIC stack written by scripts/make_demo_data.py (6 frames, 128 x 192 px, fixed seed): "
                          "a wavy moving edge with a fluorescent band just inside it. Not measured data."},
-        "file_patterns": {"image": run_all_steps_patterns("IMAGE_PATTERNS"),
-                          "mask": run_all_steps_patterns("MASK_PATTERNS")},
+        "file_patterns": {"image": list(analysis.pipeline_defaults.FILE_PATTERNS["IMAGE_PATTERNS"]),
+                          "mask": list(analysis.pipeline_defaults.FILE_PATTERNS["MASK_PATTERNS"])},
     }
-
-
-def run_all_steps_patterns(key):
-    return list(analysis.run_all_steps.PIPELINE_CONFIG[key])
 
 
 async def _read(upload: UploadFile) -> bytes:

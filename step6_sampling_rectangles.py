@@ -21,23 +21,26 @@ from matplotlib.patches import Rectangle
 import pickle
 import json
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pipeline_defaults import DEFAULTS  # noqa: E402  (single source of defaults)
+
 # Configuration
 CONFIG = {
     'INPUT_DIR_STEP1': "step1_results",
     'INPUT_DIR_STEP2': "step2_results",
     'INPUT_DIR_STEP5': "step5_results",
     'OUTPUT_DIR': "step6_results",
-    'depth': 50,                # Depth of rectangle (pixels into cell)
-    'width': 25,                 # Width of rectangle (pixels)
-    'min_cell_coverage': 0.8,    # Minimum fraction inside cell
-    'rotation_method': 'vertical', # Options: 'none', 'flip', 'search', 'vertical'
+    'depth': DEFAULTS['step6']['depth'],                # Depth of rectangle (pixels into cell)
+    'width': DEFAULTS['step6']['width'],                 # Width of rectangle (pixels)
+    'min_cell_coverage': DEFAULTS['step6']['min_cell_coverage'],    # Minimum fraction inside cell
+    'rotation_method': DEFAULTS['step6']['rotation_method'], # Options: 'none', 'flip', 'search', 'vertical'
                                  # 'none': No rotation attempted
                                  # 'flip': Try 180° flip only (original try_rotation behavior)
                                  # 'search': Search through multiple angles to find maximum coverage
                                  # 'vertical': Simple vertical rectangles, no normal calculation or rotation
-    'rotation_search_angles': 18 # Number of angles to try (0-360°) for 'search' method
+    'rotation_search_angles': DEFAULTS['step6']['rotation_search_angles'] # Number of angles to try (0-360°) for 'search' method
 ,
-    'CREATE_VERIFICATION_FIGURES': True  # Create verification figures
+    'CREATE_VERIFICATION_FIGURES': DEFAULTS['step6']['create_verification_figures']  # Create verification figures
 }
 
 def load_previous_results():

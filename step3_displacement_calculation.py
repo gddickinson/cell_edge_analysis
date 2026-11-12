@@ -13,17 +13,20 @@ import matplotlib.pyplot as plt
 import pickle
 import json
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pipeline_defaults import DEFAULTS  # noqa: E402  (single source of defaults)
+
 # Configuration
 CONFIG = {
     'INPUT_DIR_STEP1': "step1_results",
     'INPUT_DIR_STEP2': "step2_results",
     'OUTPUT_DIR': "step3_results",
-    'min_movement_pixels': 5,  # Minimum valid displacements needed
-    'ARROW_SCALE': 1,  # Scale factor for displacement arrows in visualization
-    'ARROW_HEAD_WIDTH': 40,  # Width of arrow head in pixels
-    'ARROW_HEAD_LENGTH': 15,  # Length of arrow head in pixels
-    'ARROW_POINT_FORWARD': True,  # True: arrows point in direction of movement, False: point to previous position
-    'CREATE_VERIFICATION_FIGURES': True  # Create verification figures
+    'min_movement_pixels': DEFAULTS['step3']['min_movement_pixels'],  # Minimum valid displacements needed
+    'ARROW_SCALE': DEFAULTS['step3']['arrow_scale'],  # Scale factor for displacement arrows in visualization
+    'ARROW_HEAD_WIDTH': DEFAULTS['step3']['arrow_head_width'],  # Width of arrow head in pixels
+    'ARROW_HEAD_LENGTH': DEFAULTS['step3']['arrow_head_length'],  # Length of arrow head in pixels
+    'ARROW_POINT_FORWARD': DEFAULTS['step3']['arrow_point_forward'],  # True: arrows point in direction of movement, False: point to previous position
+    'CREATE_VERIFICATION_FIGURES': DEFAULTS['step3']['create_verification_figures']  # Create verification figures
 }
 
 def parse_arguments():

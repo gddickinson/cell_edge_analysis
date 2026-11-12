@@ -3,7 +3,8 @@
 ## Pipeline (repo root; each step reads earlier steps' result folders and writes `stepN_results/`)
 | File | Purpose / key functions |
 |---|---|
-| `run_all_steps.py` | `PIPELINE_CONFIG` (all defaults), dataset discovery, `run_step()` (runs step scripts as subprocesses, resolved via `SCRIPT_DIR`) |
+| `pipeline_defaults.py` | `DEFAULTS` (per-step defaults) and `FILE_PATTERNS`: the single source read by run_all_steps, every step script's CONFIG, the GUI and web/analysis.py |
+| `run_all_steps.py` | `PIPELINE_CONFIG` (paths + `pipeline_defaults`), dataset discovery, `run_step()` (runs step scripts as subprocesses, resolved via `SCRIPT_DIR`) |
 | `step1_data_loading.py` | load TIFF stacks; `subtract_background`, `normalize_frames` |
 | `step2_edge_detection.py` | `detect_cell_edge` (longest find_contours at 0.5), `smooth_edge` (Gaussian, wrap/reflect) |
 | `step3_displacement_calculation.py` | `calculate_displacement_map` (uppermost-edge y change per integer x) |
@@ -36,8 +37,8 @@
 - `scripts/make_demo_data.py` (synthetic demo TIFFs), `scripts/make_edge_fixture.py` (-> `tests/fixtures/edge_fixture.json`),
   `scripts/build_static.py` (Pages export), `scripts/screenshots.py` (smoke test + README images).
 - `tests/test_web.py` (API, static build, node test), `tests/test_edge_fixture.py` (fixture current),
-  `tests/test_script_paths.py`, `tests/test_summarize_batch.py`, `tests/test_step6_nan_points.py` (regressions).
+  `tests/test_script_paths.py`, `tests/test_defaults_single_source.py`, `tests/test_summarize_batch.py`, `tests/test_step6_nan_points.py` (regressions).
 
 ## How it connects
-`web/analysis.py` imports the step modules and `run_all_steps.PIPELINE_CONFIG`; `/api/info` serves the defaults to the
+`web/analysis.py` imports the step modules and `pipeline_defaults.DEFAULTS`; `/api/info` serves the defaults to the
 front end; `edge_engine.js` mirrors steps 1, 2, 5, 6, 7 and is checked against `web/analysis.py` output via the fixture.

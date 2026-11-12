@@ -13,21 +13,24 @@ import matplotlib.pyplot as plt
 import pickle
 import json
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pipeline_defaults import DEFAULTS  # noqa: E402  (single source of defaults)
+
 # Configuration
 CONFIG = {
     'INPUT_DIR_STEP1': "step1_results",
     'INPUT_DIR_STEP2': "step2_results",
     'INPUT_DIR_STEP3': "step3_results",
     'OUTPUT_DIR': "step4_results",
-    'movement_threshold': 5,  # Threshold in pixels
+    'movement_threshold': DEFAULTS['step4']['movement_threshold'],  # Threshold in pixels
     # Visualization options
-    'SHOW_EDGES': True,  # Show cell edges on images
-    'SHOW_ARROWS': True,  # Show displacement arrows on images
-    'ARROW_SCALE': 1,  # Scale factor for displacement arrows
-    'ARROW_HEAD_WIDTH': 20,  # Width of arrow head in pixels
-    'ARROW_HEAD_LENGTH': 10,  # Length of arrow head in pixels
-    'ARROW_POINT_FORWARD': True,  # True: arrows point in direction of movement
-    'CREATE_VERIFICATION_FIGURES': True  # Create verification figures
+    'SHOW_EDGES': DEFAULTS['step4']['show_edges'],  # Show cell edges on images
+    'SHOW_ARROWS': DEFAULTS['step4']['show_arrows'],  # Show displacement arrows on images
+    'ARROW_SCALE': DEFAULTS['step4']['arrow_scale'],  # Scale factor for displacement arrows
+    'ARROW_HEAD_WIDTH': DEFAULTS['step4']['arrow_head_width'],  # Width of arrow head in pixels
+    'ARROW_HEAD_LENGTH': DEFAULTS['step4']['arrow_head_length'],  # Length of arrow head in pixels
+    'ARROW_POINT_FORWARD': DEFAULTS['step4']['arrow_point_forward'],  # True: arrows point in direction of movement
+    'CREATE_VERIFICATION_FIGURES': DEFAULTS['step4']['create_verification_figures']  # Create verification figures
 }
 
 def parse_arguments():

@@ -12,16 +12,19 @@ import matplotlib.pyplot as plt
 import tifffile
 import json
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pipeline_defaults import DEFAULTS  # noqa: E402  (single source of defaults)
+
 # Configuration
 CONFIG = {
     'IMAGE_STACK_PATH': "/Users/george/Desktop/forJinghao_scripts/data/test_1/151_2019_07_29_TIRF_mKera_scratch_1_Pos7_rot30_crop_piezo1.tif",
     'MASK_STACK_PATH': "/Users/george/Desktop/forJinghao_scripts/data/test_1/151_2019_07_29_TIRF_mKera_scratch_1_Pos7_rot30_crop_Mask.tif",
     'OUTPUT_DIR': "step1_results",
-    'NORMALIZE_FRAMES': True,  # Normalize each frame to its brightest pixel
-    'NORMALIZATION_SCALE': 100.0,  # Scaling factor after normalization (multiply by this value)
-    'SUBTRACT_BACKGROUND': True,  # Subtract background before normalization
-    'BACKGROUND_PERCENTILE': 10,  # Percentile of histogram to use as background (0-100)
-    'CREATE_VERIFICATION_FIGURES': True  # Create verification figures
+    'NORMALIZE_FRAMES': DEFAULTS['step1']['normalize_frames'],  # Normalize each frame to its brightest pixel
+    'NORMALIZATION_SCALE': DEFAULTS['step1']['normalization_scale'],  # Scaling factor after normalization (multiply by this value)
+    'SUBTRACT_BACKGROUND': DEFAULTS['step1']['subtract_background'],  # Subtract background before normalization
+    'BACKGROUND_PERCENTILE': DEFAULTS['step1']['background_percentile'],  # Percentile of histogram to use as background (0-100)
+    'CREATE_VERIFICATION_FIGURES': DEFAULTS['step1']['create_verification_figures']
 }
 
 def parse_arguments():

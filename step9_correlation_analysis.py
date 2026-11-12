@@ -14,16 +14,19 @@ import pickle
 import json
 from scipy import stats
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pipeline_defaults import DEFAULTS  # noqa: E402  (single source of defaults)
+
 # Configuration
 CONFIG = {
     'INPUT_DIR_STEP4': "step4_results",
     'INPUT_DIR_STEP8': "step8_results",
     'OUTPUT_DIR': "step9_results",
-    'binning_method': 'equal_count',
-    'n_bins': 10,
-    'min_bin_count': 5,
-    'movement_threshold': 5,  # Threshold for separating extruding vs retracting
-    'CREATE_VERIFICATION_FIGURES': True  # Create verification figures
+    'binning_method': DEFAULTS['step9']['binning_method'],
+    'n_bins': DEFAULTS['step9']['n_bins'],
+    'min_bin_count': DEFAULTS['step9']['min_bin_count'],
+    'movement_threshold': DEFAULTS['step9']['movement_threshold'],  # Threshold for separating extruding vs retracting
+    'CREATE_VERIFICATION_FIGURES': DEFAULTS['step9']['create_verification_figures']  # Create verification figures
 }
 
 def load_previous_results():

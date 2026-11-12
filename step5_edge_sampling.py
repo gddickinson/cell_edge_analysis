@@ -13,23 +13,26 @@ import matplotlib.pyplot as plt
 import pickle
 import json
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pipeline_defaults import DEFAULTS  # noqa: E402  (single source of defaults)
+
 # Configuration
 CONFIG = {
     'INPUT_DIR_STEP1': "step1_results",
     'INPUT_DIR_STEP2': "step2_results",
     'OUTPUT_DIR': "step5_results",
-    'n_points': 12,              # Number of sampling points (ignored for 'dense' method)
-    'exclude_endpoints': True,   # Exclude first and last edge points
-    'sampling_method': 'displacement_like', # Options: 'per_frame', 'fixed_x', 'dense', 'displacement_like'
+    'n_points': DEFAULTS['step5']['n_points'],              # Number of sampling points (ignored for 'dense' method)
+    'exclude_endpoints': DEFAULTS['step5']['exclude_endpoints'],   # Exclude first and last edge points
+    'sampling_method': DEFAULTS['step5']['sampling_method'], # Options: 'per_frame', 'fixed_x', 'dense', 'displacement_like'
                                     # 'per_frame': sample each frame independently at n_points
                                     # 'fixed_x': same x-positions across all frames
                                     # 'dense': sample at every unique x-position in each frame
                                     # 'displacement_like': sample at integer x-positions like step 3/4 displacement calculation
-    'target_points_displacement': 20,  # Target number of points for 'displacement_like' method (None = all integer x-positions)
-    'y_selection': 'uppermost',   # Options: 'uppermost' or 'lowermost'
+    'target_points_displacement': DEFAULTS['step5']['target_points_displacement'],  # Target number of points for 'displacement_like' method (None = all integer x-positions)
+    'y_selection': DEFAULTS['step5']['y_selection'],   # Options: 'uppermost' or 'lowermost'
                                     # 'uppermost': select minimum y (top of cell)
                                     # 'lowermost': select maximum y (bottom of cell)
-    'CREATE_VERIFICATION_FIGURES': True  # Create verification figures
+    'CREATE_VERIFICATION_FIGURES': DEFAULTS['step5']['create_verification_figures']  # Create verification figures
 }
 
 def parse_arguments():

@@ -15,7 +15,7 @@ route('pipeline', async () => {
       the correlation statistics; they need the full pipeline (<code>python run_all_steps.py --batch</code> or the desktop
       GUI), which also writes verification figures for every step.</div>
     <h2>Parameters and defaults</h2>
-    <p class="small mute">Defaults are the batch pipeline's (<code>PIPELINE_CONFIG</code> in <code>run_all_steps.py</code>).
+    <p class="small mute">Defaults come from <code>pipeline_defaults.py</code>, the one module the batch pipeline, step scripts, desktop GUI and this app all read.
       All lengths are in pixels.</p>
     <div class="scroll"><table><thead><tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
       ${Object.entries(PARAM_HELP).map(([k, v]) => `<tr><td class="num">${esc(k)}</td><td class="num">${esc(String(d[k]))}</td>

@@ -15,7 +15,7 @@ python run_all_steps.py --batch --dataset exp1  # one dataset
 python summarize_batch_results.py results/      # table of all datasets
 python combined_batch_analysis.py               # pooled correlation</pre>
     <p>Main result per dataset: <code>results/&lt;dataset&gt;/step9_results/final_analysis_summary.json</code>.
-      Parameters live in <code>PIPELINE_CONFIG</code> in <code>run_all_steps.py</code>; each step script also takes them
+      Defaults live in <code>pipeline_defaults.py</code>, shared by the pipeline, the step scripts, the GUI and this app; each step script also takes them
       on the command line (<code>--help</code>).</p>
     <h2>Desktop GUI</h2>
     <pre>python launch_gui.py       # or: python cell_edge_analysis_gui.py</pre>

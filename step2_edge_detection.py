@@ -14,13 +14,16 @@ from scipy.ndimage import gaussian_filter1d
 import pickle
 import json
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pipeline_defaults import DEFAULTS  # noqa: E402  (single source of defaults)
+
 # Configuration
 CONFIG = {
     'INPUT_DIR': "step1_results",
     'OUTPUT_DIR': "step2_results",
-    'SMOOTH_EDGES': True,  # Apply Gaussian smoothing to edges
-    'SMOOTHING_SIGMA': 20.0,  # Sigma for Gaussian smoothing (higher = more smoothing)
-    'CREATE_VERIFICATION_FIGURES': True  # Create verification figures
+    'SMOOTH_EDGES': DEFAULTS['step2']['smooth_edges'],  # Apply Gaussian smoothing to edges
+    'SMOOTHING_SIGMA': DEFAULTS['step2']['smoothing_sigma'],  # Sigma for Gaussian smoothing (higher = more smoothing)
+    'CREATE_VERIFICATION_FIGURES': DEFAULTS['step2']['create_verification_figures']  # Create verification figures
 }
 
 def parse_arguments():

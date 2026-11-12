@@ -57,11 +57,11 @@ def test_js_engine():
 DEMO = STATIC / "demo"
 
 
-def test_info_defaults_come_from_pipeline_config():
-    import run_all_steps
+def test_info_defaults_come_from_pipeline_defaults():
+    from pipeline_defaults import DEFAULTS
     d = client.get("/api/info").json()
-    assert d["defaults"]["smoothing_sigma"] == run_all_steps.PIPELINE_CONFIG["step2"]["smoothing_sigma"]
-    assert d["defaults"]["rotation_method"] == run_all_steps.PIPELINE_CONFIG["step6"]["rotation_method"]
+    assert d["defaults"]["smoothing_sigma"] == DEFAULTS["step2"]["smoothing_sigma"]
+    assert d["defaults"]["rotation_method"] == DEFAULTS["step6"]["rotation_method"]
     assert [s["n"] for s in d["steps"]] == list(range(1, 10))
     assert (STATIC / d["demo"]["image"].removeprefix("static/")).exists()
 

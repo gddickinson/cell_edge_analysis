@@ -22,7 +22,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 os.environ.setdefault("MPLBACKEND", "Agg")  # the step modules import pyplot at import time
 
-import run_all_steps  # noqa: E402  (PIPELINE_CONFIG: the pipeline's defaults)
+import pipeline_defaults  # noqa: E402  (the single source of pipeline defaults)
 import step1_data_loading as s1  # noqa: E402
 import step2_edge_detection as s2  # noqa: E402
 import step5_edge_sampling as s5  # noqa: E402
@@ -42,8 +42,8 @@ STR_KEYS = {"sampling_method", "y_selection", "rotation_method"}
 
 
 def default_params():
-    """The web parameters, with defaults from run_all_steps.PIPELINE_CONFIG (the batch pipeline's settings)."""
-    c = run_all_steps.PIPELINE_CONFIG
+    """The web parameters, with defaults from pipeline_defaults.DEFAULTS (shared with the scripts and the GUI)."""
+    c = pipeline_defaults.DEFAULTS
     p1, p2, p5, p6 = c["step1"], c["step2"], c["step5"], c["step6"]
     return {
         "normalize_frames": p1["normalize_frames"], "normalization_scale": p1["normalization_scale"],

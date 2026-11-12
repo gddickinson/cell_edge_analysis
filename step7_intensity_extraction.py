@@ -13,15 +13,18 @@ import matplotlib.pyplot as plt
 import pickle
 import json
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pipeline_defaults import DEFAULTS  # noqa: E402  (single source of defaults)
+
 # Configuration
 CONFIG = {
     'INPUT_DIR_STEP1': "step1_results",
     'INPUT_DIR_STEP2': "step2_results",
     'INPUT_DIR_STEP6': "step6_results",
     'OUTPUT_DIR': "step7_results",
-    'show_edge': True  # Display cell edge in verification figures
+    'show_edge': DEFAULTS['step7']['show_edge']  # Display cell edge in verification figures
 ,
-    'CREATE_VERIFICATION_FIGURES': True  # Create verification figures
+    'CREATE_VERIFICATION_FIGURES': DEFAULTS['step7']['create_verification_figures']  # Create verification figures
 }
 
 def load_previous_results():

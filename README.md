@@ -180,10 +180,11 @@ python run_all_steps.py --batch
 
 ### Adjusting Parameters
 
-Edit `run_all_steps.py` to customize analysis parameters:
+All defaults live in one module, `pipeline_defaults.py` (`DEFAULTS`), which `run_all_steps.py`, every step script,
+the desktop GUI and the web app read. Edit it to customize analysis parameters:
 
 ```python
-PIPELINE_CONFIG = {
+DEFAULTS = {
     # Step 1: Preprocessing
     'step1': {
         'normalize_frames': True,           # Normalize intensity
@@ -213,6 +214,11 @@ PIPELINE_CONFIG = {
     }
 }
 ```
+
+> **Changed (2026-11):** the desktop GUI used to start with `n_points` 10 and `target_points_displacement` 5, and
+> ran step 8 with `temporal_direction` 'past', while `run_all_steps.py` used 12, 20 and 'future'. All entry points
+> now use the pipeline values from `pipeline_defaults.py`, so GUI results on the same data can differ from earlier
+> GUI runs (more sampling points per frame; intensities paired with the following frame pair).
 
 ### Recommended Settings
 
@@ -450,7 +456,7 @@ python stepX_script.py --input-dir ... --output-dir ...
 
 **Solution:**
 ```python
-# In run_all_steps.py, disable verification figures:
+# In pipeline_defaults.py, disable verification figures:
 'create_verification_figures': False  # For all steps
 ```
 
@@ -466,7 +472,7 @@ python run_all_steps.py --batch --dataset test_1
 # 2. Check verification figures at each step
 ls results/test_1/*/verification_figures/
 
-# 3. Adjust parameters in PIPELINE_CONFIG
+# 3. Adjust parameters in pipeline_defaults.py
 
 # 4. Reprocess and compare
 ```
@@ -551,11 +557,13 @@ This pools data from all datasets to compute an overall correlation.
 
 ### Custom File Patterns
 
-If your files use different naming conventions, edit `run_all_steps.py`:
+If your files use different naming conventions, edit `FILE_PATTERNS` in `pipeline_defaults.py`:
 
 ```python
-IMAGE_PATTERNS = ['*_TIRF.tif', '*_GFP.tif']
-MASK_PATTERNS = ['*_binary.tif', '*_seg.tif']
+FILE_PATTERNS = {
+    'IMAGE_PATTERNS': ['*_TIRF.tif', '*_GFP.tif'],
+    'MASK_PATTERNS': ['*_binary.tif', '*_seg.tif'],
+}
 ```
 
 
@@ -587,7 +595,7 @@ ls results/experiment1/*/verification_figures/
 ### 3. Adjust Parameters (if needed)
 
 ```python
-# Edit run_all_steps.py PIPELINE_CONFIG
+# Edit pipeline_defaults.py
 # Modify preprocessing or analysis parameters
 ```
 
@@ -629,7 +637,7 @@ python run_web.py                 # http://127.0.0.1:8124
 ```
 
 - **Analyse**: load a fluorescence TIFF stack and its mask stack (or the synthetic demo), set the step 1/2/5/6
-  parameters (defaults from `PIPELINE_CONFIG`), and step through frames: detected edge, sampling points, rectangles
+  parameters (defaults from `pipeline_defaults.py`), and step through frames: detected edge, sampling points, rectangles
   coloured by mean intensity, the intensity profile along the edge, a frame × x map of all frames, a points table and
   CSV export (with the pixel size if the TIFF records one).
 - The analysis runs in the browser with a JavaScript port (`web/static/edge_engine.js`, `contours.js`) of the repo's

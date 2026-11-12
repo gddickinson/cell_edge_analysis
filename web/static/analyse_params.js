@@ -1,5 +1,5 @@
 // Parameter form for the Analyse page: one fieldset per pipeline step, initial values from /api/info defaults
-// (run_all_steps.PIPELINE_CONFIG) and help texts from the step scripts' own comments.
+// (pipeline_defaults.DEFAULTS) and help texts from the step scripts' own comments.
 import { esc } from './core.js';
 
 export const PARAM_HELP = {
