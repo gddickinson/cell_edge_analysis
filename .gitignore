@@ -9,3 +9,7 @@ src/gui/__pycache__/main_window.cpython-311.pyc
 /old_version/src/analysis/__pycache__
 /old_version/src/analysis/__pycache__
 /old_version/src/utils/__pycache__
+
+# web interface
+site/
+__pycache__/

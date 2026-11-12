@@ -611,3 +611,35 @@ python combined_batch_analysis.py
 python summarize_batch_results.py results/ --csv results.csv
 ```
 
+
+---
+
+## 🌐 Web interface
+
+Edge detection and the fluorescence-along-the-edge profile (pipeline steps 1, 2, 5, 6, 7) on your own image + mask
+stacks, in the browser. Live site: https://gddickinson.github.io/cell_edge_analysis/
+
+| Home | Analyse (synthetic demo) | Pipeline |
+|---|---|---|
+| ![Home](docs/img/home.png) | ![Analyse](docs/img/analyse_results.png) | ![Pipeline](docs/img/pipeline.png) |
+
+```bash
+pip install -r requirements-web.txt
+python run_web.py                 # http://127.0.0.1:8124
+```
+
+- **Analyse**: load a fluorescence TIFF stack and its mask stack (or the synthetic demo), set the step 1/2/5/6
+  parameters (defaults from `PIPELINE_CONFIG`), and step through frames: detected edge, sampling points, rectangles
+  coloured by mean intensity, the intensity profile along the edge, a frame × x map of all frames, a points table and
+  CSV export (with the pixel size if the TIFF records one).
+- The analysis runs in the browser with a JavaScript port (`web/static/edge_engine.js`, `contours.js`) of the repo's
+  Python steps, so the static site is fully functional and nothing is uploaded. `web/static/edge_engine.test.mjs`
+  checks it against Python (`tests/fixtures/edge_fixture.json`, from `scripts/make_edge_fixture.py`) for every
+  sampling and rotation method.
+- The local app additionally reads compressed TIFFs with tifffile and has a **Check with Python** button that re-runs
+  the frame with the repo's own step functions (`web/analysis.py`).
+- Steps 3, 4, 8 and 9 (edge movement and the intensity-movement correlation) stay in the batch pipeline / desktop GUI.
+- The demo stack (`web/static/demo/`, from `scripts/make_demo_data.py`) is **synthetic**, not measured data.
+
+Static site: `python scripts/build_static.py` (published by `.github/workflows/pages.yml` on push to main).
+Tests: `python -m pytest -q tests` and `node web/static/edge_engine.test.mjs`.
