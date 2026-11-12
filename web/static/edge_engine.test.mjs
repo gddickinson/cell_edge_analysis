@@ -5,12 +5,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findContours, gaussianFilter1d } from './contours.js';
-import { cellCoverage, meanAt, percentile32, preprocessFrame, runPipeline } from './edge_engine.js';
+import { percentile32, runPipeline } from './edge_engine.js';
 import { readTiff } from './tiff.js';
 
 const here = dirname(fileURLToPath(import.meta.url)), root = join(here, '..', '..');
 const fx = JSON.parse(readFileSync(join(root, 'tests', 'fixtures', 'edge_fixture.json'), 'utf8'));
-let fails = 0, checks = 0, ties = 0;
+let fails = 0, checks = 0;
 const fail = msg => { fails++; if (fails <= 25) console.error('FAIL', msg); };
 function close(a, b, what, rtol = 1e-9, atol = 1e-9) {
   checks++;
@@ -67,18 +67,6 @@ function compare(stack, c) {
     f.rects.forEach((r, i) => {
       const e = q.rects[i], t = `${tag} rect ${i}`;
       checks++;
-      if (c.params.rotation_method === 'search' && r.rotation_angle !== e.rotation_angle && e.corners) {
-        // Angle search keeps the first strictly larger coverage; angles whose coverage is equal up to rounding of the
-        // rotated rectangle's area are near-ties that libm's last-digit cos/sin can decide either way. Accept the
-        // JS choice only if Python's rectangle, evaluated in JS, has the same coverage and gives Python's intensity.
-        const alt = cellCoverage(e.corners, stack.masks[q.frame], stack.h, stack.w);
-        close(alt.coverage, r.coverage, `${t} tie coverage`, 1e-9);
-        close(alt.coverage, e.coverage, `${t} python coverage`, 1e-9);
-        if (alt.pixels.length !== e.n_pixels) fail(`${t} tie n_pixels ${alt.pixels.length} vs ${e.n_pixels}`);
-        close(meanAt(preprocessFrame(stack.images[q.frame], c.params), alt.pixels), e.intensity, `${t} tie intensity`, 2e-6, 1e-6);
-        ties++;
-        return;
-      }
       if (r.accepted !== e.accepted) fail(`${t} accepted ${r.accepted} vs ${e.accepted}`);
       if (r.pixels.length !== e.n_pixels) fail(`${t} n_pixels ${r.pixels.length} vs ${e.n_pixels}`);
       close(r.coverage, e.coverage, `${t} coverage`, 1e-9);
@@ -96,4 +84,4 @@ const blob = { images: b.images.map(f => Float32Array.from(f.flat())), masks: b.
 for (const c of b.pipeline) compare(blob, c);
 
 if (fails) { console.error(`${fails} of ${checks} checks failed`); process.exit(1); }
-console.log(`edge_engine: all ${checks} checks agree with Python (${ties} angle-search near-ties resolved to an equal-coverage angle)`);
+console.log(`edge_engine: all ${checks} checks agree with Python`);

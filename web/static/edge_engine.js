@@ -140,6 +140,8 @@ export function sampleEdges(edges, p, which) {
 }
 
 // ---- step 6: step6_sampling_rectangles ----------------------------------------------------------------------------
+export const COVERAGE_TIE_TOL = 1e-9;  // as step6_sampling_rectangles.COVERAGE_TIE_TOL
+
 export function edgeNormal(contour, idx) {
   const n = contour.length;
   if (n < 3) return [0, -1];
@@ -214,12 +216,17 @@ export function rectanglesForFrame(points, edge, mask, h, w, p) {
         corners = k2; coverage = c2.coverage; pixels = c2.pixels; accepted = true; tried = true; angle = 180;
       }
     } else if (!accepted && p.rotation_method === 'search') {
-      let bc = 0, bk = null, ba = 0, bp = [];
-      const step = 360 / p.rotation_search_angles;
+      // step6 search_optimal_rotation: the smallest angle whose coverage is within COVERAGE_TIE_TOL of the best
+      const step = 360 / p.rotation_search_angles, cands = [];
       for (let a = 0; a < p.rotation_search_angles; a++) {
         const deg = a * step, k2 = rectangleCorners(pt, rotate(normal, deg), p.width, p.depth);
-        const c2 = cellCoverage(k2, mask, h, w);
-        if (c2.coverage > bc) { bc = c2.coverage; bk = k2; ba = deg; bp = c2.pixels; }
+        cands.push({ deg, k2, ...cellCoverage(k2, mask, h, w) });
+      }
+      const max = Math.max(...cands.map(c => c.coverage));
+      let bc = 0, bk = null, ba = 0, bp = [];
+      if (max > 0) {
+        const c = cands.find(c => c.coverage >= max - COVERAGE_TIE_TOL);
+        bc = c.coverage; bk = c.k2; ba = c.deg; bp = c.pixels;
       }
       if (bc >= p.min_cell_coverage) {
         corners = bk; coverage = bc; pixels = bp; accepted = true; tried = true; angle = ba;
