@@ -19,6 +19,7 @@ route('home', async () => {
     <div class="grid">
       <a class="card" href="#/analyse"><b>Analyse</b><span>Image + mask TIFF stacks or the demo: edge, sampling points, rectangles coloured by intensity, the profile along the edge, a frame × position map, CSV export.</span></a>
       <a class="card" href="#/pipeline"><b>Pipeline</b><span>The nine steps from loading to correlation, which ones the browser runs, and every parameter with its default.</span></a>
+      <a class="card" href="https://gddickinson.github.io/cell_edge_analysis_individual_scripts/" target="_blank" rel="noopener"><b>Individual scripts ↗</b><span>The sibling repo's site: step 1 normalisation options and the step 7 statistic compared with the defaults, and finding the edge from the PIEZO1 fluorescence instead of the DIC mask.</span></a>
       <a class="card" href="#/about"><b>About</b><span>What the project does, how to run the batch pipeline, the desktop GUI and this web app.</span></a>
     </div>`;
 });
